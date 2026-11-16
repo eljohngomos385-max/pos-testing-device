@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A4 icons · Orb + Grain</title>
+<style>
+  :root { --page: #EDEDED; --bg: #FFFFFF; --bg-soft: #E2E2E2; --ink: #303030; --ink-2: #616161;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+  header { position: sticky; top: 0; z-index: 1; display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    padding: 16px 24px; background: var(--page); }
+  h1 { margin: 0 auto 0 0; font-size: 20px; }
+  .seg { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+  .seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-2); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  h2 { font-size: 15px; color: var(--ink-2); margin: 20px 24px 10px; }
+  iframe { display: block; width: calc(100% - 48px); margin: 0 24px; border: 0; border-radius: 20px; background: #fff; }
+</style>
+</head>
+<body>
+<header>
+  <h1>A4 icons</h1>
+  <div class="seg" id="size">
+    <button data-s="128" aria-pressed="true">128 (app size)</button>
+    <button data-s="256" aria-pressed="false">256</button>
+    <button data-s="512" aria-pressed="false">512</button>
+  </div>
+  <div class="seg" id="theme">
+    <button data-t="light" aria-pressed="true">Light</button>
+    <button data-t="dark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<h2>Orb · a4-orb.html</h2>
+<iframe id="orb" src="a4-orb.html" title="Orb icons"></iframe>
+<h2>Grain · a4-grain.html</h2>
+<iframe id="grain" src="a4-grain.html" title="Grain icons"></iframe>
+<script>
+// Shows the real lab pages' pictures only (no cards, no words), so what you see is exactly what those pages draw.
+let size = 128, dark = false;
+const css = s => `header, h2, figcaption, .card b, .card p { display: none !important; }
+  body { background: var(--bg) !important; } main { padding: 24px !important; } .grid { display: contents !important; }
+  main { display: flex; flex-wrap: wrap; gap: 24px; }
+  figure { margin: 0; } .card { width: auto !important; height: auto !important; padding: 0 !important; border: 0 !important; background: none !important; }
+  .card svg { width: ${s}px !important; height: ${s}px !important; margin: 0 !important; }`;
+function apply() {
+  for (const f of [orb, grain]) {
+    const d = f.contentDocument; if (!d || !d.body) continue;
+    let st = d.getElementById('viewer'); if (!st) { st = d.createElement('style'); st.id = 'viewer'; d.head.appendChild(st); }
+    st.textContent = css(size);
+    d.body.classList.toggle('dark', dark);
+    f.style.background = dark ? '#121212' : '#fff';
+    f.style.height = d.documentElement.scrollHeight + 'px';
+  }
+}
+for (const f of [orb, grain]) f.addEventListener('load', apply);
+const seg = (el, fn) => el.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b)); fn(b); apply();
+});
+seg(document.getElementById('size'), b => size = +b.dataset.s);
+seg(document.getElementById('theme'), b => dark = b.dataset.t === 'dark');
+</script>
+</body>
+</html>

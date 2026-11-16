@@ -59,15 +59,17 @@ const RAMP_L = ['#0045A6','#024EB6','#0356C7','#145FD0','#1D69DD','#2372EB','#2F
 // Dark: a guess (no ref) — navy L .30 → soft sky L .74, never grey.
 const RAMP_D = ['#0A2B5F','#053072','#003584','#003C94','#0043A1','#004AAF','#0151BD','#0959C9','#1B62D0','#2B6CD3','#3B76D4','#4C80D3','#5D89D0','#6D92CE','#789BD3','#82A4D8','#8DACDE'];
 const RIM_SD = 6, RIM_K = .42;   // rim band: silhouette blurred 6 units (≈ 6 % of the object), darkens up to .42
-const GRAIN = { bf: 2.2, sd: .36, k: .78 };   // ≈ 1.5 device px grain; on the 2x shot std 6.7/255, autocorr .40 at 1px = ref
+// Grain = img/grain-tile.png (a5-grain-tile.py), added to the colour inside the tone filter: col + K·(tile − .5),
+// so specks lighten and darken equally, like ref-11. Tiled 1 tile px = 1 device px at any icon size (grainFit below),
+// so it stays fine film grain instead of growing into blotches when the icon is drawn big.
+const GRAIN_K = .25;   // tile spread 28 levels × .25 ≈ 7 levels, ref-11 measures 6.4–7.5
 
 const tbl = (ramp, c) => ramp.map(h => (parseInt(h.slice(1 + 2 * c, 3 + 2 * c), 16) / 255).toFixed(3)).join(' ');
 const tone = (id, ramp) => `<filter id="${id}" color-interpolation-filters="sRGB">
   <feComponentTransfer result="col"><feFuncR type="table" tableValues="${tbl(ramp, 0)}"/><feFuncG type="table" tableValues="${tbl(ramp, 1)}"/><feFuncB type="table" tableValues="${tbl(ramp, 2)}"/></feComponentTransfer>
-  <feTurbulence type="fractalNoise" baseFrequency="${GRAIN.bf}" numOctaves="1" seed="7"/>
-  <feColorMatrix type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1"/>
-  <feGaussianBlur stdDeviation="${GRAIN.sd}" result="n"/>
-  <feComposite in="col" in2="n" operator="arithmetic" k2="1" k3="${GRAIN.k}" k4="${-GRAIN.k / 2}"/>
+  <feImage class="grainImg" href="img/grain-tile.png?v=3" x="0" y="0" width="1" height="1" preserveAspectRatio="none" result="g0"/>
+  <feTile in="g0" result="g"/>
+  <feComposite in="col" in2="g" operator="arithmetic" k2="1" k3="${GRAIN_K}" k4="${-GRAIN_K / 2}"/>
 </filter>`;
 shared.innerHTML = tone('toneL', RAMP_L) + tone('toneD', RAMP_D) +
   `<filter id="rim" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${RIM_SD}"/>
@@ -244,6 +246,13 @@ document.getElementById('main').innerHTML = PAGES.map(([page, states]) =>
   `<h2>${page}</h2><div class="grid">${states.map(([art, t, line, label]) =>
     `<figure><div class="card">${svg(ART[art])}<b>${t}</b><p>${line}</p></div><figcaption>${label}</figcaption></figure>`
   ).join('')}</div>`).join('');
+
+// Size the grain tile so 1 tile px = 1 device px for the icons' current drawn size (re-run when that size changes).
+const grainFit = () => { const s = document.querySelector('.card svg'); if (!s) return;
+  const u = 256 * 140 / (s.getBoundingClientRect().width * devicePixelRatio);
+  for (const im of document.querySelectorAll('.grainImg')) { im.setAttribute('width', u); im.setAttribute('height', u); } };
+new ResizeObserver(grainFit).observe(document.querySelector('.card svg'));
+grainFit();
 
 const setTheme = dark => {
   document.body.classList.toggle('dark', dark);

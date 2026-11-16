@@ -54,6 +54,7 @@ function renderCheckout() {
   const done = $('#checkoutDone'); if (done) done.hidden = true;
   const pm = $('#paidMoment'); if (pm) pm.hidden = true;   // left mid-moment: no animationend came to hide it
   const tender = $('#checkoutTender'); if (tender) tender.value = '';
+  showPayStep.at = null;   // a new checkout: its first step shows as it is
   showPayStep();
   renderCheckoutSub();
 }
@@ -87,10 +88,24 @@ function renderCheckoutSub() {
 // Under the fixed total: the method tiles, or the chosen method's one detail.
 function showPayStep() {
   if (SP) return spRender();   // split: its own steps (a customer change re-renders the checkout)
+  const step = !state.paymentMethodChosen ? 'method' : state.paymentMethod === 'cash' ? 'cash' : 'paid';
+  // one step to another (owner 2026-11-16, as a modifier question): the amount stays, the new step's boxes fade in over the
+  // last ones (styles.css "Motion", co-body). Opening the checkout (renderCheckout) just shows its first step.
+  if (showPayStep.at && step !== showPayStep.at && !showPayStep.held && document.startViewTransition && calmMs(1) && $('#checkoutSteps').checkVisibility()) {
+    const H = document.documentElement;
+    let bg = '';
+    for (let el = $('#checkoutSteps'); el && !bg; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+    H.style.setProperty('--co-bg', bg || getComputedStyle(document.body).backgroundColor);
+    showPayStep.held = true;
+    H.classList.add('co-go');
+    document.startViewTransition(showPayStep).finished.finally(() => { showPayStep.held = false; H.classList.remove('co-go'); });
+    return;
+  }
+  showPayStep.at = step;
   cashOk = false;
   const m = state.paymentMethod;
-  const step = !state.paymentMethodChosen ? 'method' : m === 'cash' ? 'cash' : 'paid';
-  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; });
+  // under the fade a step's own fade-in is off (inline, until it hides again): turned back on as the fade ended it replayed
+  $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== step; el.style.animation = showPayStep.held && !el.hidden ? 'none' : ''; });
   // How many across the count wants: 4 -> 2x2, 6 -> 3x2, 8 -> 4x2. One tile size at any count.
   const n = $$('#checkoutMethods .co-tile').length;
   $('#checkoutMethods')?.style.setProperty('--cols', n <= 4 ? 2 : n <= 6 ? 3 : 4);
@@ -112,6 +127,7 @@ function showPayStep() {
   const qr = state.paymentMethodChosen && !paid.hidden && !!pic && qrDone !== keyNow();
   $('#checkoutApp').classList.toggle('qr-up', qr);
   $('#qrStep').hidden = !qr;
+  if (qr && showPayStep.held) $('#qrStep').style.animation = 'none';
   if (qr) {
     paid.hidden = true;
     $('#qrImg').src = pic;

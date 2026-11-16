@@ -268,7 +268,7 @@ function renderProducts() {
       <div class="no-results">${state.query.trim() ? emptyState('search', `No results for “${escapeHtml(state.query.trim())}”`,
         `<button class="e-act cta-3" type="button" data-act="custom-item">Sell it as a custom item</button>
         <button class="e-act cta-3" type="button" data-act="lost-sale">Log it as a lost sale</button>`)
-        : emptyState('box', `Add what you sell first. ${emptyAct('Add item', '.side-link[data-view="items"]')}`)}</div>`;
+        : emptyState('tag', `Add what you sell first. ${emptyAct('Add item', '.side-link[data-view="items"]')}`)}</div>`;
     renderSellHeader();
     requestAnimationFrame(syncSellGridMetrics);
     return;
@@ -594,7 +594,7 @@ function renderVariantList() {
     <button type="button" class="vs-row" data-variant-id="${p.id}">
       <span class="nm">${escapeHtml(p.name)}${out(p) ? '<small><b>Sold out</b></small>' : p.trackStock === false ? '' : `<small>${roundQty(p, p.stock)} available</small>`}</span>
       <span class="amt num">${askedPrice(p) ? '—' : peso(p.price)}</span>
-    </button>`).join('') : q ? noResults(vm.query.trim()) : emptyState('tags', 'All sold out');
+    </button>`).join('') : q ? noResults(vm.query.trim()) : emptyState('box', 'All sold out');
 }
 
 function changePage(delta) {
@@ -1299,9 +1299,36 @@ function esPress(v, k, dec, max) {
   return +n > max ? v : n;
 }
 
+// A page that wants the keyboard (Senior / PWD's ID, Delivery's address, a line's Note): the iPhone shows it only for a focus
+// inside the tap, and the fade (drawEditSheet) draws the page a frame later. A stand-in field takes the focus now and hands it
+// to the real one once it's drawn. drawn: what drawEditSheet returned; get(): the field; end: the cursor after what's there.
+function esFocusSoon(drawn, get, end) {
+  const tmp = drawn && document.createElement('input');
+  if (tmp) {
+    tmp.setAttribute('aria-hidden', 'true'); tmp.tabIndex = -1;
+    Object.assign(tmp.style, { position: 'fixed', top: '0', left: '0', width: '1px', height: '1px', opacity: '0', fontSize: '16px', pointerEvents: 'none' });   // 16px: no zoom
+    document.body.append(tmp); tmp.focus({ preventScroll: true });
+  }
+  Promise.resolve(drawn).catch(() => {}).then(() => {
+    const f = get();
+    if (f) { f.focus({ preventScroll: true }); if (end) f.selectionStart = f.value.length; }
+    if (tmp) tmp.remove();
+  });
+}
 function drawEditSheet() {
   const o = es, card = $('#editSheetCard');
   if (!o) return;
+  // a question in or back, Pickup's / Delivery's page (owner 2026-11-16): the sheet stays, only what's in it changes, a quick
+  // crossfade (styles.css "Motion"; a slide read as a page swipe). The old one is pictured as it is (the tapped answer still lit).
+  if ((o.dir === 'fwd' || o.dir === 'bwd') && !drawEditSheet.held && document.startViewTransition && calmMs(1)) {
+    const H = document.documentElement;
+    drawEditSheet.held = true;
+    H.style.setProperty('--q-bg', getComputedStyle($('#editSheet')).backgroundColor);
+    H.classList.add('q-go', 'q-' + o.dir);
+    const vt = document.startViewTransition(drawEditSheet);
+    vt.finished.finally(() => { drawEditSheet.held = false; H.classList.remove('q-go', 'q-fwd', 'q-bwd', 'q-drag'); });
+    return vt.updateCallbackDone;   // drawn a frame later: a caller that focuses a field waits for it (esFocusSoon)
+  }
   const ht = heroSnap(card);   // a typed number carries on from what's on screen (heroPlay)
   // the typing line where the next key lands (owner 2026-11-06): in front of a grey value the first key replaces (as a box's
   // hint), else after the digits, before a %
@@ -1431,7 +1458,7 @@ function drawEditSheet() {
     : ask ? `<button type="button" class="es-ink cta" data-apply${+o.d > 0 ? '' : ' disabled'}>Add</button>`
     : o.f === 'n' ? `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-apply>Done</button>`   // the line page's own Done, back to it
     : o.f ? `<button type="button" class="es-ink cta" data-apply${o.f === 'd' && !(+o.d > 0) ? ' disabled' : ''}>Apply</button>` : `<button type="button" class="${ph ? 'ph-bar' : 'es-ink'} cta" data-close>Done</button>`),   // a 0 discount waits, as the price ask's Add does
-  `${list || o.kind === 'mods' ? ' fill' : ask ? ' ask' : o.kind === 'line' ? ' ln' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir ? ' es-' + o.dir : ''}`);
+  `${list || o.kind === 'mods' ? ' fill' : ask ? ' ask' : o.kind === 'line' ? ' ln' : ''}${dk ? ' wd' : ttl ? ' wl' : ''}${dk || nk ? ' ks' : ''}${lk}${o.anim === true ? ' es-in' : o.anim === 'out' ? ' es-out' : ''}${o.dir && !drawEditSheet.held ? ' es-' + o.dir : ''}`);   // not under the crossfade: its 24px nudge replayed after it (the wiggle)
   ksCarry(card, o);
   heroPlay(card, ht, o);
   const rl =list && !o.f && card.querySelector('.es-list');
@@ -1563,11 +1590,13 @@ function editSheetClick(e) {
   } else return;
   const typing = el('[data-sk]') || el('.es-seg button');   // the keys, Percent / Amount: shown, not put on yet
   esWrite();
-  const draw = () => { drawEditSheet(); if (ES_SC[o.f]) ($$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]')).focus({ preventScroll: true }); };   // the page never moves for the keyboard (app.js touchend)
+  const draw = () => {   // the page never moves for the key
+    const r = drawEditSheet();
+    if (ES_SC[o.f]) esFocusSoon(r, () => $$('#editSheet [data-scf]').find(i => !i.value.trim()) || $('#editSheet [data-scf]'));
+    else if (o.f === 'n') esFocusSoon(r, () => $('#esNote'), true);
+  };   // the page never moves for the keyboard (app.js touchend)
   draw();
   if (!typing && discountOk(o.ok)) o.ok = discSnap();   // anything else puts it on: past the limit, a manager is asked
-  const note = $('#esNote');   // preventScroll: the panel slides in, and a plain focus scrolls the catalog under it
-  if (note) { note.focus({ preventScroll: true }); note.selectionStart = note.value.length; }
 }
 
 // ---------- Modifiers at the sale (plans/modifiers-build.md) ----------
@@ -1617,11 +1646,12 @@ function esModsClick(el) {
   else if (got.length >= q.max) return flashControl(row);   // Up to 2: a third waits for one to come off
   else got.push(id);
   drawEditSheet();
-  // Pick one: on once the tap has shown (modifiers-lab's 220 ms), to the next question or the review
+  // Pick one: on to the next question or the review. With the question slide, at once: its picture of this question
+  // already shows the answer lit (owner 2026-11-16: the 220 ms wait read as the app stalling). Without it, once the tap has shown.
   if (q.required) setTimeout(() => {
     if (es !== o || o.rev || o.qs[o.at] !== q) return;   // a second fast tap, or Back meanwhile
     esModsOn(o);
-  }, 220);
+  }, document.startViewTransition && calmMs(1) ? 0 : 220);
 }
 
 // The same item again (owner 2026-10-25, line-and-again-lab.html 4 / 2b; was the peek card of 10-24): a tap on an item that asks
@@ -1697,8 +1727,8 @@ function esFulClick(el) {
   else if (el('[data-map]')) return openDeliveryMap();
   else return;
   renderCart();
-  drawEditSheet();
-  if (o.f === 'a') { const a = $('#esAddr'); a.focus({ preventScroll: true }); a.selectionStart = a.value.length; }
+  const r = drawEditSheet();
+  if (o.f === 'a') esFocusSoon(r, () => $('#esAddr'), true);   // Delivery's address, the cursor after it
 }
 
 // The types the owner configured (Walk-in can't be removed): one picker that opens into the list -- half a row has

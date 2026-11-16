@@ -140,7 +140,7 @@ function attachEvents() {
   // a swipe's speed as it ends, px/ms over its last 100ms; a flick goes its way (back, if flicked back), else past a quarter lands it
   const noteMove = (s, dx, t) => { s.dx = dx; s.pts = [...(s.pts || []).filter(p => t - p.t < 100), { dx, t }]; };
   const speed = (s) => { const a = s.pts?.[0], b = s.pts?.at(-1); return a && b.t > a.t ? (b.dx - a.dx) / (b.t - a.t) : 0; };
-  const swipeGo = (s, w) => { const v = speed(s); return Math.abs(v) > .3 ? v * s.dx > 0 : Math.abs(s.dx) > w / 4; };
+  const swipeGo = (s, w) => { const v = s.still ? 0 : speed(s); return Math.abs(v) > .3 ? v * s.dx > 0 : Math.abs(s.dx) > w / 4; };   // still: held before the lift, no flick
   // From the screen's left edge a swipe right does what the top-left button does (owner 2026-10-29): ☰ pulls the menu out
   // under the finger; ‹ Back slides its page off and presses Back, the same path, so an editor with changes still asks.
   // On the open menu a swipe left pushes it back. The first 4px pick it; then it owns the finger and whatever the touch
@@ -167,8 +167,9 @@ function attachEvents() {
     const b = !open && cornerBtn(), menu = !!b && b.matches('#sidebarToggle, [data-act="open-sidebar"]');
     if (!open && !b) return;
     if (!open && e.clientX > 24 && !(menu && isMenu(b) && !sideways(e.target))) return;   // past the edge only ☰ pages swipe, anywhere on them (owner 2026-10-29)
-    let pg = !menu && b;   // the page Back leaves: the button's first full-height box
+    let pg = !menu && b;   // the page Back leaves: the button's first full-height box; the edit sheet itself, not its card
     while (pg && pg.getBoundingClientRect().height < innerHeight * .8) pg = pg.parentElement;
+    if (b && !menu && b.closest('.esheet')) pg = b.closest('.esheet');
     edge = { id: e.pointerId, x: e.clientX, y: e.clientY, at: e.target, open, b, menu: menu && isMenu(b), pg: pg && !pg.contains(mainEl) ? pg : null };
   }, true);
   addEventListener('pointermove', (e) => {
@@ -181,11 +182,23 @@ function attachEvents() {
       g.at.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: g.id, pointerType: 'touch', isPrimary: true }));
       g.on = true;   // after: that cancel passes this file's own listeners too
       g.from = sideEl.getBoundingClientRect().right;   // where the menu really is: a finger on a slide still going takes it from there, no jump to fully open
-      if (g.pg) g.pg.style.transition = 'none';
+      if (!g.open && !g.menu) g.ctl = pageSwipeBack?.(g.b);   // a ‹ page: the real back, its pictures under the finger, the page under moving too
+      // the finger held by the page itself: the back may redraw what it touched (a modifier question), and a finger on a removed
+      // element is dropped (a cancel, no more moves) mid-swipe
+      if (g.ctl) try { document.documentElement.setPointerCapture(e.pointerId); } catch {}
+      if (g.pg && !g.ctl) {
+        g.pg.style.transition = 'none';
+        g.under = [...g.pg.parentElement.children].filter(c => c !== g.pg && c.matches('.o-rail, .page'));   // the list a third left under it moves with the finger too
+        g.under.forEach(u => { u.style.transition = 'none'; });
+      }
     }
     e.stopPropagation();
     noteMove(g, dx, e.timeStamp);
-    if (g.pg) g.pg.style.transform = `translate3d(${Math.max(0, dx)}px, 0, 0)`;
+    if (g.ctl) g.ctl.to(dx);
+    else if (g.pg) {
+      g.pg.style.transform = `translate3d(${Math.max(0, dx)}px, 0, 0)`;
+      g.under?.forEach(u => { u.style.transform = `translate3d(${-.3 * Math.max(0, g.pg.offsetWidth - Math.max(0, dx))}px, 0, 0)`; });
+    }
     else if (g.open || g.menu) drawer.at(g.from + dx);
   }, true);
   addEventListener('touchmove', (e) => { if (edge?.on) { e.preventDefault(); e.stopPropagation(); } }, { capture: true, passive: false });   // the page holds still
@@ -195,19 +208,27 @@ function attachEvents() {
     edge = null;
     e.stopPropagation();
     if (g.open || g.menu) return drawer.end(e.type === 'pointerup');
+    g.still = e.timeStamp - (g.pts?.at(-1)?.t ?? e.timeStamp) > 80;   // the finger stopped before it lifted: no flick (iOS's way)
+    if (g.ctl) return g.ctl.end(e.type === 'pointerup' && swipeGo(g, $('.main').offsetWidth), g.still ? 0 : speed(g));
     const go = e.type === 'pointerup' && swipeGo(g, g.pg ? g.pg.offsetWidth : drawer.w());
-    if (!go) { if (g.pg) Object.assign(g.pg.style, { transition: 'transform .28s var(--rl-ease)', transform: '' }); return; }
+    if (!go) { [g.pg, ...(g.under || [])].forEach(el => el && Object.assign(el.style, { transition: 'transform .28s var(--rl-ease)', transform: '' })); return; }
     if (!g.pg) return g.b.click();
     const pg = g.pg;   // off to the right, then Back; it asked (an editor's changes): the page comes back under the ask
     Object.assign(pg.style, { transition: 'transform .2s var(--rl-ease)', transform: `translate3d(${innerWidth - pg.getBoundingClientRect().left + g.dx}px, 0, 0)` });
+    g.under?.forEach(u => Object.assign(u.style, { transition: 'transform .2s var(--rl-ease)', transform: 'translate3d(0, 0, 0)' }));
     setTimeout(() => {
       g.b.click();
-      Object.assign(pg.style, confirmSheet ? { transition: 'transform .28s var(--rl-ease)', transform: '' } : { transition: 'none', transform: '' });
-      setTimeout(() => { pg.style.transition = ''; }, 300);
+      [pg, ...(g.under || [])].forEach(el => Object.assign(el.style, confirmSheet ? { transition: 'transform .28s var(--rl-ease)', transform: '' } : { transition: 'none', transform: '' }));
+      setTimeout(() => { [pg, ...(g.under || [])].forEach(el => { el.style.transition = ''; }); }, 300);
     }, 200);
   };
   addEventListener('pointerup', edgeEnd, true);
   addEventListener('pointercancel', edgeEnd, true);
+  // the app sent to the background mid-swipe gets no lift (owner 2026-11-16: it came back stuck half-way): settle it as a cancel
+  const edgeDrop = () => { if (edge?.on) edgeEnd({ type: 'pointercancel', pointerId: edge.id, stopPropagation() {} }); else edge = null; };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) edgeDrop(); });
+  addEventListener('pagehide', edgeDrop);
+  addEventListener('blur', edgeDrop);
   // A page's tabs under the finger (owner 2026-10-29), the Sell grid's way: `live` rides a sideways drag with the tab beside
   // it peeking (a copy, drawn by o.fill(el, tab) a frame in, so the page moves at once); a quarter of the way or a flick lands
   // on it, pressed through its tab (or o.go). Right of the first tab the ☰ menu comes out instead. A touch on a slide
@@ -1403,18 +1424,33 @@ function attachEvents() {
 }
 
 // ---------- A ‹ page slides (owner 2026-11-16, iOS's push; styles.css "Motion") ----------
-// Settings, QR codes and Shift swap their pages in place. A tap there is held for one frame: the page is snapshotted, the
-// tap runs (every handler, unchanged, in one go), and the old and new pictures slide. Which way comes from the pages seen
-// since the menu opened this one: back to one of them, or a ‹, slides back. No view transitions (Safari < 18): instant.
+// Settings, QR codes, Shift, the item editor and (phone) an order's / customer's page. A tap that can open or leave a page
+// is held for one frame: the page is snapshotted, the tap runs (every handler, unchanged, in one go), and the old and new
+// pictures slide. The ☰ / ‹ ride with their pages: held in place (as iOS's back button) it left a square in the page and
+// sat on the search bar sliding under it (owner 2026-11-16).
+// Which way comes from the pages seen since the menu opened this one: back to one of them, or a ‹, slides back.
+// The edge swipe (above) runs the same slide under the finger: pageSwipeBack. No view transitions (Safari < 18): instant.
+let pageSwipeBack = null;
 function bindPageSlide() {
   if (!document.startViewTransition) return;
-  const H = document.documentElement, VIEWS = ['settings', 'qr', 'shift'];
+  const H = document.documentElement, phone = () => innerWidth <= 720;
+  // per page, the taps that can open or leave one (anything in Settings, QR codes, Shift; a row or ‹ elsewhere)
+  const VIEWS = { settings: 'button, a, [role="button"], .fr', qr: 'button, a, [role="button"], .fr', shift: 'button, a, [role="button"], .fr',
+    orders: '.row, .back', customers: '[data-customer-id], .back', items: '.row, .back, #itemsAdd' };
   const key = () => {
     const v = $('.view.active'); if (!v) return '';
-    let k = v.dataset.view + '|' + [...v.querySelectorAll('section.page, .st-page')].filter(p => !p.hidden && p.checkVisibility()).map(p => p.id).join(',');
-    if (v.dataset.view === 'settings' && !$('#setSecBack').hidden) k += ':' + $('#setTitle').textContent;
+    const view = v.dataset.view;
+    let k = view + '|' + [...v.querySelectorAll('section.page, .st-page')].filter(p => !p.hidden && p.checkVisibility()).map(p => p.id).join(',');
+    if (view === 'settings' && !$('#setSecBack').hidden) k += ':' + $('#setTitle').textContent;
+    if ((view === 'orders' || view === 'customers') && v.querySelector('.ov.reading')) k += ':reading';
+    if (view === 'items' && $('#itemsView').classList.contains('editing')) k += ':editing';
     return k;
   };
+  // what opened each page, as a selector, so a swipe that changes its mind can open it again (its row may be redrawn)
+  const openedBy = new Map();
+  const selOf = (t) => { const el = t.closest('[id], [data-sec], [data-qr-open], [data-order-id], [data-customer-id], [data-id], [data-sh]'); if (!el) return null;
+    if (el.id) return '#' + CSS.escape(el.id);
+    const a = [...el.attributes].find(x => x.name.startsWith('data-')); return `[${a.name}="${CSS.escape(a.value)}"]`; };
   let trail = [], replay = false;
   const dirFor = (from, to, back) => {
     if (from === to) return 'none';
@@ -1425,24 +1461,101 @@ function bindPageSlide() {
     if (back) { trail = [to]; return 'back'; }
     trail.push(to); return 'fwd';
   };
-  document.addEventListener('click', (e) => {
-    if (replay || !e.isTrusted || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const t = e.target.closest('button, a, [role="button"], .fr'), view = $('.view.active')?.dataset.view;
-    if (!t || !VIEWS.includes(view) || !t.closest('.view.active') || t.matches('[data-act="open-sidebar"]')
-      || t.closest('label, input, select, textarea, [contenteditable], .fs-veil, .rail-veil, .modal-backdrop, .esheet, .vsheet, .scan-sheet')) return;   // fields, switches, sheets and pop-ups keep their own
-    e.stopImmediatePropagation(); e.preventDefault();
-    const from = key(), back = t.matches('.back');
-    let bg = '';   // the page's colour behind each picture, so one sliding over the other never shows through
+  const run = (t, e) => {   // the held tap, every handler
+    replay = true;
+    try { t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: e?.clientX ?? 0, clientY: e?.clientY ?? 0, detail: e?.detail ?? 1 })); }
+    finally { replay = false; }
+  };
+  const start = () => {   // before the picture: the page's colour behind it
+    let bg = '';
     for (let el = $('.view.active'); el && !bg; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
     H.style.setProperty('--pg-bg', bg || getComputedStyle(document.body).backgroundColor);
     H.classList.add('pg-go');
+  };
+  const after = (dir) => H.classList.add('pg-' + dir);
+  const done = () => H.classList.remove('pg-go', 'pg-fwd', 'pg-back', 'pg-none', 'pg-drag');
+  const holds = (t) => {   // may this tap be held: it can open or leave a page here
+    const view = $('.view.active')?.dataset.view;
+    return VIEWS[view] && t.closest('.view.active') && !t.matches('[data-act="open-sidebar"]')
+      && !((view === 'orders' || view === 'customers') && !phone())   // the iPad shows the list and the page side by side
+      && !t.closest('label, input, select, textarea, [contenteditable], .fs-veil, .rail-veil, .modal-backdrop, .esheet, .vsheet, .scan-sheet');   // fields, switches, sheets and pop-ups keep their own
+  };
+  document.addEventListener('click', (e) => {
+    if (replay || !e.isTrusted || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const view = $('.view.active')?.dataset.view, t = VIEWS[view] && e.target.closest(VIEWS[view]);
+    if (!t || !holds(t)) return;
+    e.stopImmediatePropagation(); e.preventDefault();
+    const from = key(), back = t.matches('.back');
+    start();
     document.startViewTransition(() => {
-      replay = true;
-      try { t.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY, detail: e.detail })); }
-      finally { replay = false; }
-      H.classList.add('pg-' + dirFor(from, key(), back));
-    }).finished.finally(() => H.classList.remove('pg-go', 'pg-fwd', 'pg-back', 'pg-none'));
+      run(t, e);
+      const to = key(), dir = dirFor(from, to, back);
+      if (dir === 'fwd') openedBy.set(to, selOf(t));
+      after(dir);
+    }).finished.finally(done);
   }, true);
+
+  // The edge swipe on a ‹ page: the back starts as the finger does, and the two pictures follow it (iOS's interactive pop).
+  // Let go and it carries on, or slides home and the page that was showing opens again. null: this page can't (the old
+  // drag in the edge swipe does it then).
+  // The scrub itself, for a page (pg-main) or a modifier question (q-body): `back` runs the back inside the transition and
+  // says if anything moved; `home` puts the page that was showing back if the finger changes its mind.
+  const scrub = ({ name, W, back, home, fin, fade }) => {
+    const D = 1000;
+    let p = 0, q = 0, raf = 0, caught = false, anims = null, ending = null, moved = false, tail = [];   // p: the finger, q: the pictures
+    const vt = document.startViewTransition(() => { moved = back(); });
+    const pseudo = (part) => `::view-transition-${part}(${name})`;
+    // [pseudo, the property, its value with the page showing, with it gone]: a page slides, a question crossfades in place
+    const prop = fade ? 'opacity' : 'transform', val = fade ? (v) => v : (v) => `translateX(${v}%)`;
+    const move = fade ? [[pseudo('old'), 1, 1], [pseudo('new'), 0, 1]] : [[pseudo('old'), 0, 100], [pseudo('new'), -30, 0]];   // a fade: the one before comes in over it
+    const kf = (a, z) => [{ [prop]: val(a) }, { [prop]: val(z) }];
+    const show = () => anims?.forEach(a => { a.currentTime = q * D; });
+    // the pictures take a few frames to come; by then the finger is ahead: they glide to it (a jump read jerky), then ride it
+    const chase = () => { const d = p - q; q = Math.abs(d) < .002 ? p : q + d * .45; caught = q === p; show(); raf = caught ? 0 : requestAnimationFrame(chase); };
+    // let go: it carries on at the finger's own speed, then lands softly (owner 2026-11-16: a fixed .14s finish after a slow
+    // hold read as a snap). v: the finger, px/ms; the curve's first slope is set so the pictures leave at that speed.
+    const finish = (go, v = 0) => {
+      cancelAnimationFrame(raf); p = q;
+      const d = Math.max(1, Math.abs((go ? 1 : 0) - p) * W), ms = Math.round(Math.min(420, Math.max(240, 180 + d * .6)));
+      const sp = Math.max(0, go ? v : -v), y1 = Math.min(1, Math.max(.05, sp * ms * .3 / d));
+      const ease = `cubic-bezier(.3, ${y1.toFixed(3)}, .325, 1)`;
+      anims.forEach(a => a.cancel());
+      const all = tail = move.map(([el, a, z]) => H.animate([{ [prop]: val(a + (z - a) * p) }, { [prop]: val(go ? z : a) }], { duration: ms, easing: ease, fill: 'forwards', pseudoElement: el }));
+      all[0].onfinish = () => { if (!go && moved) home(); };   // home: the page that was showing, before the pictures go
+    };
+    vt.ready.then(() => {
+      if (!moved) { anims = []; return; }
+      anims = move.map(([el, a, z]) => H.animate(kf(a, z), { duration: D, easing: 'linear', fill: 'both', pseudoElement: el }));
+      anims.forEach(a => { a.pause(); a.currentTime = 0; });
+      if (ending) return finish(ending.go, ending.v);
+      raf = requestAnimationFrame(chase);
+    }).catch(() => {});
+    vt.finished.finally(() => { fin(); tail.forEach(a => a.cancel()); });   // their last frame held until the pictures went; then gone
+    return {
+      to(dx) { p = Math.min(1, Math.max(0, dx / W)); if (caught) { q = p; show(); } else if (anims && !raf) raf = requestAnimationFrame(chase); },
+      end(go, v) { ending = { go, v }; if (anims?.length) finish(go, v); },
+    };
+  };
+  pageSwipeBack = (b) => {
+    // a modifier question past the first: the one before fades in as the finger goes (the questions crossfade in place)
+    const o = typeof es !== 'undefined' && es;
+    if (b.closest('.esheet.open') && o?.kind === 'mods' && (o.at || o.rev)) {
+      const was = { at: o.at, rev: o.rev, w: o.w };
+      drawEditSheet.held = true;   // this transition is the swipe's: the redraw inside it draws at once
+      H.style.setProperty('--q-bg', getComputedStyle($('#editSheet')).backgroundColor);
+      H.classList.add('q-go', 'q-drag');
+      return scrub({ name: 'q-body', fade: true, W: $('#editSheet').getBoundingClientRect().width,
+        back: () => { run(b); return true; }, home: () => { Object.assign(o, was); o.dir = false; drawEditSheet(); },
+        fin: () => { drawEditSheet.held = false; H.classList.remove('q-go', 'q-fwd', 'q-bwd', 'q-drag'); } });
+    }
+    const view = $('.view.active')?.dataset.view, from = key(), opener = openedBy.get(from);
+    if (!holds(b) || !b.matches('.back') || !opener || (view === 'items' && editorDirty())) return null;
+    const saved = [...trail];
+    start(); H.classList.add('pg-drag');
+    return scrub({ name: 'pg-main', W: $('.main').getBoundingClientRect().width, fin: done,
+      back: () => { run(b); const moved = dirFor(from, key(), true) === 'back'; after(moved ? 'back' : 'none'); return moved; },
+      home: () => { trail = saved; const el = document.querySelector(opener); if (el) run(el); } });
+  };
 }
 
 // ---------- Init ----------

@@ -84,8 +84,8 @@ function fillItemsPane(kind, band, rows) {
       <span class="pr num">${itemPriceText(it)}</span>
       <span class="num ${itemStk(it)}">${itemOnHand(it) || '—'}</span></button>`;
   }).join('') || (q ? noResults(itemsFilter.q.trim()) : !catalogItems().length
-    ? emptyState('box', 'Tap + to add what you sell.')
-    : emptyState('box', `No items match. ${emptyAct('Change filters', '#itemsFilter')}`));
+    ? emptyState('tag', 'Tap + to add what you sell.')
+    : emptyState('tag', `No items match. ${emptyAct('Change filters', '#itemsFilter')}`));
 }
 
 // The editor: a working copy E of the item. Only Save (and the photo / colour) write to the catalog.
@@ -721,8 +721,8 @@ function renderKindRows(kind, band, rows) {
         discs ? (x.builtin ? '<small>Asks for the ID number and name</small>' : '') : cats ? (addPickOn(x.id) ? '<small>Already a tile</small>' : '')
         : mods ? `<small class="mline"><span class="ch">${liveChoices(x).map(o => hit(o.name)).join(', ')}</span></small>` : ''}</span></span>
       <span class="num">${discs ? esShown(x) : SalesMath.plural(addPick ? toCells(catProducts(x.id)).length : itemsWith(kind, x.id, all).length, 'item')}</span></button>`).join('')
-    || (q ? noResults(itemsFilter.q.trim()) : kind === 'addons' ? emptyState('addon', 'No add-ons yet') : discs ? emptyState('tags', 'Tap + to add a discount.')
-      : cats ? emptyState('folders', 'Tap + to group items for Sell.') : kind === 'sups' ? emptyState('box', 'Tap + to add a supplier.') : emptyState('sliders', 'Tap + to add a modifier,<br>like Gift wrap.'));
+    || (q ? noResults(itemsFilter.q.trim()) : kind === 'addons' ? emptyState('plus', 'No add-ons yet') : discs ? emptyState('percent', 'Tap + to add a discount.')
+      : cats ? emptyState('grid', 'Tap + to group items for Sell.') : kind === 'sups' ? emptyState('box', 'Tap + to add a supplier.') : emptyState('toggle', 'Tap + to add a modifier,<br>like Gift wrap.'));
 }
 
 function openKindEditor(kind, id, dir, from = null) {

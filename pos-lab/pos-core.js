@@ -322,21 +322,21 @@ function escapeHtml(s) {
   }[c]));
 }
 
-// Every empty page and search (owner's C1 from empty-lab, 2026-11-06): the silhouette -- the page's thing drawn in white
-// in a blurred blue haze, one size everywhere -- and one plain line under it. An action rides in the line as a blue word
+// Every empty page and search (owner's C1 from empty-lab, 2026-11-06; picture = Grain, 2026-11-16): the page's thing as one
+// solid object in cloudy blue with film grain, one size everywhere -- and one plain line under it. An action rides in the line as a blue word
 // (emptyAct); where the page has its own +, the line says "Tap +" instead. emptyAct's tap is a selector the word clicks
 // (app.js), so it is always a button already on the page. `more`: buttons under the line (Sell search). `pic`: a
-// picture name; each is baked by scripts/bake-empty-pics.mjs (its drawings live there) into img/empty/<pic>.png, the haze, and
-// <pic>-obj.png, the soft white shape: two masks, no live filter, so swipes stay smooth on the iPhone (owner 2026-11-06).
+// picture name; each is baked by scripts/bake-empty-pics.mjs from empty-lab/a4-grain.html (its drawings live there) into
+// img/empty/<pic>.webp and <pic>-dark.webp: plain pictures, no live filter, so swipes stay smooth on the iPhone (owner 2026-11-06).
 // They are fetched once at start and kept in memory (blob: URLs): a page shows its picture the moment it opens, never
 // after a trip to the server, which may say no-store (owner 2026-11-06: "it takes a while for it to load").
 const EMPTY_PICS = {};
-for (const f of ['grain', ...'search box folder folders tags receipt people cash clock sliders addon'.split(' ').flatMap(p => [p, p + '-obj'])])
-  fetch(`img/empty/${f}.png`).then(r => r.blob()).then(b => { EMPTY_PICS[f] = URL.createObjectURL(b); }).catch(() => {});
-const emptyPic = f => `url(${EMPTY_PICS[f] || `img/empty/${f}.png`})`;
+for (const f of 'search tag folder box receipt grid toggle plus percent person cash clock'.split(' ').flatMap(p => [p, p + '-dark']))
+  fetch(`img/empty/${f}.webp`).then(r => r.blob()).then(b => { EMPTY_PICS[f] = URL.createObjectURL(b); }).catch(() => {});
+const emptyPic = f => `url(${EMPTY_PICS[f] || `img/empty/${f}.webp`})`;
 function emptyState(pic, line, more = '') {
-  return `<div class="empty"><div class="sil" style="--pic: ${emptyPic(pic)}; --obj: ${emptyPic(pic + '-obj')}; --grain: ${emptyPic('grain')}" aria-hidden="true"></div>`
-    + `<span class="e-line">${line}</span>${more}</div>`;
+  return `<div class="empty"><div class="pic" style="--pic: ${emptyPic(pic)}; --pic-d: ${emptyPic(pic + '-dark')}" aria-hidden="true"></div>`
+    + `<span class="e-line">${line}</span>${more ? `<div class="e-more">${more}</div>` : ''}</div>`;
 }
 const emptyAct = (text, tap) => `<button type="button" class="e-act" data-tap='${tap}'>${text}</button>`;
 const noResults = q => emptyState('search', `No results for “${escapeHtml(q)}”`);

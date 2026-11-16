@@ -6,7 +6,8 @@
 
 :root {
   --qs-tick-ic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8.25l2 2 4-4.5'/%3E%3C/svg%3E");   /* the tick of a ticked dot (Quick stock, types delete) */
-  --push-dur: .4s; --push-ease: cubic-bezier(.32, .72, 0, 1);   /* a ‹ page's slide in and back: iOS's push (owner 2026-11-16, motion lab) */
+  --push-dur: .4s; --push-ease: cubic-bezier(.25, 1, .325, 1);   /* a ‹ page's slide in and back, fitted to iOS Settings and Claude's app (owner 2026-11-16, within 2%).
+     A cubic-bezier, never linear(): iPhone Safari runs a bezier on the GPU, a linear() list stuttered; no filter, clip or shadow either */
   --rl-ease: cubic-bezier(.2, .8, .2, 1);               /* on :root so the view-transition layers reach it */  --bg: #121212;
   --bg-soft: #1C1C1C;
   --bg-softer: #232323;
@@ -7546,14 +7547,12 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
    size everywhere, and one plain line whose top sits 6px under the haze (-2.5px: the drawing's box ends 3.5px past the haze,
    less the 6px gap). An action is a blue word in the line. The halo keeps the line clear where the haze runs under it. */
 .empty { display: grid; place-content: center; justify-items: center; gap: 6px; height: 100%; padding: 32px 24px; text-align: center; }
-.empty .sil { --haze: color-mix(in srgb, var(--cta-solid) 72%, #A9B4C2); position: relative; width: 525px; height: 525px; margin: -152.5px -200px -142.5px; pointer-events: none; }
-.sil::before { content: ''; position: absolute; inset: 0; background: var(--grain) 0 0 / 128px, var(--haze);   /* the haze: --haze and its grain, cut to the picture's baked shape (scripts/bake-empty-pics.mjs) */
-  -webkit-mask: var(--pic) 0 0 / 100% 100%; mask: var(--pic) 0 0 / 100% 100%; }
-.sil::after { content: ''; position: absolute; inset: 0; background: var(--bg); -webkit-mask: var(--obj) 0 0 / 100% 100%; mask: var(--obj) 0 0 / 100% 100%; }   /* the soft shape, in the page's colour */
-.empty .e-line { position: relative; max-width: 320px; margin-top: -2.5px; font-size: 17px; line-height: 1.35; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere;
-                 text-shadow: 0 0 6px var(--canvas), 0 0 12px var(--canvas), 0 0 20px var(--canvas), 0 0 28px var(--canvas); }
+.empty .pic { width: 140px; height: 140px; background: var(--pic-d) center / 100% 100% no-repeat; pointer-events: none; }   /* the baked Grain picture (scripts/bake-empty-pics.mjs), its dark copy by default */
+body.light-theme .empty .pic { background-image: var(--pic); }
+.empty .e-line { position: relative; max-width: 320px; margin-top: 8px; font-size: 17px; line-height: 1.35; color: var(--ink); text-wrap: balance; overflow-wrap: anywhere; }
 .empty .e-line .e-act { display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--cta-solid); }
-.empty > .e-act { position: relative; padding: 8px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
+.empty .e-more { height: 0; display: grid; justify-items: center; align-content: start; margin-top: 4px; }   /* buttons under the line (Sell search) hang below it and don't count for the centring: picture + line sit on the middle like every other empty page (owner 2026-11-16: "a bit lower so the page is balanced") */
+.empty .e-more .e-act { position: relative; padding: 6px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
 .empty .e-act:hover { opacity: .8; }
 .empty > b { font-size: 17px; font-weight: 600; color: var(--ink); }   /* the swap list's two-line hint (pos-sell.js), no picture */
 .empty > b + span { max-width: 30ch; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
@@ -9522,10 +9521,42 @@ html.pg-go #orderDetail :is(.rp-paper, .ol) { view-transition-name: none; }   /*
   mix-blend-mode: normal; background: var(--pg-bg, #000); animation-duration: var(--push-dur); animation-timing-function: var(--push-ease); animation-fill-mode: both; }
 html.pg-none::view-transition-old(pg-main) { display: none; }
 html.pg-none::view-transition-new(pg-main) { animation: none; }
+/* the edit sheet scrolls up and down only (as .main): a sideways drag is the edge swipe's. Its back redraws the question the finger
+   is on, and with the touch left on the removed box the browser took the drag for its own pan and dropped the swipe */
+.esheet { touch-action: pan-y; }
+/* a modifier question in and back, Pickup's / Delivery's page (pos-sell.js drawEditSheet, owner 2026-11-16): the sheet stays
+   and only its content changes: the new content fades in over the old in one go (.2s), as checkout's steps fade. A slide here read as a page swipe, and the old 24px nudge replayed after it (the wiggle). */
+html.q-go .esheet.open .es-body { view-transition-name: q-body; }
+html.q-go .esheet.open .es-body :is(.es-col, .es-list) { animation: none; }
+::view-transition-group(q-body) { overflow: clip; animation: none; }
+::view-transition-old(q-body), ::view-transition-new(q-body) { mix-blend-mode: normal; background: var(--q-bg, #000); }
+::view-transition-old(q-body) { animation: none; }   /* stays as it was under the new one */
+::view-transition-new(q-body) { animation: q-in .2s ease-out both; }   /* one fade, over it: out-then-in dipped through blank and read as a flash */
+@keyframes q-in { from { opacity: 0; } }
+html.q-drag::view-transition-old(q-body), html.q-drag::view-transition-new(q-body) { animation: none; }
+/* ‹, the name, the progress bar and the foot sit over the question's box: pictured on their own above it, and still */
+html.q-go .esheet.open .es-x { view-transition-name: q-x; }
+html.q-go .esheet.open .es-ttl { view-transition-name: q-ttl; }
+html.q-go .esheet.open .es-prog { view-transition-name: q-prog; }
+html.q-go .esheet.open .es-ft { view-transition-name: q-ft; }
+::view-transition-group(q-x), ::view-transition-group(q-ttl), ::view-transition-group(q-prog), ::view-transition-group(q-ft) { z-index: 2; animation: none; }
+::view-transition-old(q-x), ::view-transition-old(q-ttl), ::view-transition-old(q-prog), ::view-transition-old(q-ft) { display: none; }
+::view-transition-new(q-x), ::view-transition-new(q-ttl), ::view-transition-new(q-prog), ::view-transition-new(q-ft) { animation: none; }   /* the edge swipe drives them (app.js) */
+/* checkout's steps (pos-checkout.js showPayStep, owner 2026-11-16): the amount stays, the new step's boxes fade in over the last
+   ones as a modifier question does; the last ones go a touch behind (a taller step must not linger past the new one's edge) */
+html.co-go #checkoutSteps > .co-step:not([hidden]) { view-transition-name: co-body; }
+::view-transition-group(co-body) { animation: none; }
+::view-transition-old(co-body) { animation: q-out .2s ease-in .08s both; }
+::view-transition-new(co-body) { animation: q-in .2s ease-out both; background: var(--co-bg, #000); }
+@keyframes q-out { to { opacity: 0; } }
+/* while the pictures slide, the pages that slide by CSS (an order's / customer's page, the item editor) land at once under them */
+html.pg-go :is(.lv .o-main, .lv .ov > .o-rail, .lv .editor, #itemsView > .page) { transition: none; }
 html.pg-fwd::view-transition-new(pg-main) { animation-name: pg-from-r; }
 html.pg-fwd::view-transition-old(pg-main) { animation-name: pg-to-l; }
 html.pg-back::view-transition-old(pg-main) { z-index: 1; animation-name: pg-to-r; }   /* back: the page leaves to the right, on top */
 html.pg-back::view-transition-new(pg-main) { animation-name: pg-from-l; }
+/* the edge swipe drives the pictures itself (app.js pageSwipeBack): after the back slide's rules, so it wins */
+html.pg-drag::view-transition-old(pg-main), html.pg-drag::view-transition-new(pg-main) { animation: none; }
 @keyframes pg-from-r { from { transform: translateX(100%); } }
 @keyframes pg-to-r   { to   { transform: translateX(100%); } }
 @keyframes pg-to-l   { to   { transform: translateX(-30%); } }

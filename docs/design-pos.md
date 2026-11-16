@@ -178,15 +178,48 @@ Reusable expand/collapse: a header row toggles `.open`; the detail panel animate
 
 Apple's rule: a page **slides**, a sheet **pops up**, a pop-up **grows in**. Nothing else moves a whole screen.
 
-- **A page with ‹ slides** in from the right and back out to the right: iOS's push, `--push-dur` .4s / `--push-ease`
-  `cubic-bezier(.32,.72,0,1)` on `:root`. The page under moves a third left (`-30%`). **Flat: no shadow, no dim** (a shadow read
-  "floaty"); transform only, so it stays smooth on a slow phone (measured 60fps with the CPU slowed 4×, one skipped first frame at 6×).
-  - Pages that swap in place (Settings, QR codes, Shift) go through `bindPageSlide()` in app.js: a tap there is held one frame,
-    the page is snapshotted, the tap is replayed inside `document.startViewTransition`, and styles.css "Motion" slides the two
-    pictures, clipped to `.main` (the iPad's menu never moves). Direction: back to a page seen since the menu opened this one, or
-    any `.back`, slides back. Fields, switches, sheets and pop-ups are never held. Safari < 18 has no view transitions: instant.
-  - Pages that slide by CSS use the same tokens: an order's / customer's page on the phone (`.o-main`, the list under moves),
-    the item editor (`#itemsView > .page` moves), an item's subpages (`.form.push` / `.pop`).
+- **A page with ‹ slides** in from the right and back out to the right, **measured off iOS Settings and Claude's app** (owner
+  2026-11-16, screen recordings split into frames: the two move the same). `--push-dur` .4s, `--push-ease`
+  `cubic-bezier(.25, 1, .325, 1)`: 46% at 50ms, 76% at 100ms, 91% at 150ms, within 2% of theirs. **Always a cubic-bezier,
+  never `linear()`**: a fitted `linear()` spring matched as well on paper but stuttered on the iPhone (Safari runs a bezier
+  on the GPU, not a point list). The earlier `cubic-bezier(.32,.72,0,1)` was smooth but rushed mid-way. The page under moves a third left (`-30%`,
+  as theirs). **Transform only.** iOS also greys the page under (~10%) and Claude rounds the moving page's leading corners, but
+  both (a filter, a rounded clip on a full-screen picture) made it stutter on the iPhone, worst going back (owner 2026-11-16).
+  Keep them out; no shadow either (it read "floaty").
+  - **One mechanism for every ‹ page**: Settings, QR codes, Shift, the item editor and (phone) an order's / customer's page go
+    through `bindPageSlide()` in app.js. A tap that can open or leave a page (per page: any button in Settings / QR / Shift; a
+    row or ‹ elsewhere) is held one frame, the page is snapshotted, the tap is replayed inside `document.startViewTransition`,
+    and styles.css "Motion" slides the two pictures, clipped to `.main` (the iPad's menu never moves). Other taps are never
+    held. Direction: back to a page seen since the menu opened this one, or any `.back`, slides back. While it runs, the
+    CSS slides of `.o-main` / `.editor` land at once under the pictures; opened from elsewhere (Reports → an order) they
+    still slide by CSS on the same tokens. Safari < 18 has no view transitions: instant.
+  - **☰ / ‹ ride with their pages**, no in-place crossfade (tried 2026-11-16): lifted out of the page picture it left a square
+    gap where it sat, and ours shares its row with the search bar, which slid under it mid-swipe. iOS's back button gets away
+    with it because it sits alone on its bar.
+  - **The edge swipe back follows the finger** (owner 2026-11-16): `pageSwipeBack` starts the real back as the finger
+    moves and scrubs both pictures (the page under comes out from its third-left spot, no gap). The pictures take a few
+    frames to come, by when the finger is ahead: they glide to it (.45 of the gap a frame), then ride it exactly; a jump read jerky. Let go past a quarter or
+    flicked: it carries on; else it slides home and the page that was showing is opened again (by what opened it). An item
+    editor with unsaved changes keeps the old drag (it asks on let-go), whose list under it now moves with the finger too.
+  - **A modifier question, Pickup's / Delivery's page: the sheet stays, only its content changes** (owner 2026-11-16, as
+    checkout's steps fade). A pick moves on at once; the new content fades in over the old in one go (.2s), the old
+    held still under it. Out-then-in dipped through blank and read as a flash. pos-sell.js drawEditSheet, `q-body`; ‹, the name, the progress bar and the
+    foot are pictured on their own above it and stay still. Under the fade the old 24px nudge class is not set: it replayed
+    after the fade (the wiggle). Tried a page slide first: it read as a page swipe. The edge swipe on a later question fades
+    the one before in as the finger goes; on the first it moves the whole sheet off to Sell.
+  - **Discount's Senior / PWD, Delivery, a line's Note** go through the same fade (they open a page in the sheet). A page that
+    wants the keyboard waits for the fade's drawing: `esFocusSoon` focuses a stand-in field inside the tap (the iPhone shows
+    its keyboard only then) and hands the focus over once the page is drawn. Focusing right after the redraw call threw (the
+    page wasn't there yet) and cut the rest of the tap short.
+  - **Checkout's steps fade the same way** (owner 2026-11-16): methods → Cash's amounts / a confirm, and Back. The step showing
+    is `co-body`; the new one fades in over the last, which goes a touch behind (a taller one must not linger). The amount
+    stays and glides (its own padding transition) to where Cash puts it. Opening the checkout just shows its first step.
+  - **Let go and it carries on at the finger's speed**: the finish curve's first slope is set from the finger
+    (`cubic-bezier(.3, y1, .325, 1)`, .24–.42s by the distance left); a fixed .14s after a slow hold read as a snap. A finger
+    still for 80ms before it lifts is no flick (it went back on a held short swipe).
+  - **A swipe holds the finger on the page** (`setPointerCapture` on `<html>`) and the edit sheet is `touch-action: pan-y`:
+    a back that redraws what the finger touched otherwise lost it (the browser took the drag as its own pan and cancelled it).
+  - **Leaving the app mid-swipe settles it** (visibilitychange / pagehide / blur cancel the swipe): it came back stuck half-way.
   - **A new ‹ page uses one of these two ways**, never its own timing.
 - **A full-screen page that is an overlay slides over**: the phone's edit sheet (a modifier's choices, a cart line, Adjust stock,
   a customer) comes in from the right over Sell and **Sell stays still**; ‹ slides it back out. On the iPad it is a sheet beside
@@ -227,24 +260,31 @@ Payment methods are SalesMath's, the back office's too:
 
 ## Empty states (pos-lab)
 
-The look is the owner's pick **C1** (2026-11-06): a soft white shape in a blurred, grainy blue haze, in a 525px box, with one 17px line under it and no title. The reference is [b3-silhouette.html](../empty-lab/b3-silhouette.html).
+The words are the owner's pick **C1** (2026-11-06): one 17px line under the picture, no title. The picture is **Grain** (2026-11-16): the page's thing as one solid object, in cloudy blue with fine film grain, 140px everywhere. The reference is [a4-grain.html](../empty-lab/a4-grain.html), which was measured from the owner's grainy-ball picture (`refs/ref-11.png`). Before that, the picture was the B3 silhouette in a blue haze.
 
 - **One helper.** `emptyState(pic, line, more)` in `pos-lab/pos-core.js` draws every empty page. `emptyAct(word, target)` puts a blue word inside the line (for example "Start a sale"). `noResults(q)` is the search one. A page never builds its own empty markup.
-- **The pictures are baked PNGs, not live SVG.** Each picture is two white alpha masks in `pos-lab/img/empty/`: `<pic>.png` is the haze and `<pic>-obj.png` is the soft shape. There is also one `grain.png` tile. The CSS (`.empty .sil` in `styles.css`) paints `var(--haze)` plus the grain, and then `var(--bg)`, through those masks, so both themes come from the tokens.
-- **Why baked.** Live SVG filters (blur, dilate, turbulence) are drawn on the CPU in iPhone Safari, and they are drawn again for every swipe peek. That made swipes lag. As masks, the pictures cost about the same as the sidebar icons (2026-11-06).
+- **There are 12 pictures:** search, tag, folder, box, receipt, grid, toggle, plus, percent, person, cash and clock.
+- **The pictures are baked WebP images, not live SVG.** Each is in `pos-lab/img/empty/` as `<pic>.webp` (light) and `<pic>-dark.webp`, at 3x, about 25 KB each. `.empty .pic` in `styles.css` shows the dark one, and `body.light-theme` swaps in the light one.
+- **Why baked.** The lab draws the look with live SVG filters: the colour table, the rim and the grain. iPhone Safari draws those on the CPU, and draws them again for every swipe peek, which made swipes lag (2026-11-06).
 - **Why prefetched.** `EMPTY_PICS` in pos-core.js fetches every picture once at start and keeps it as a `blob:` URL. Without this, the first visit to a page showed it without its picture for a moment, because `scripts/serve.py` sends `no-store`. In the Capacitor build the files ship inside the app.
+- **The grain is real film grain:** per-pixel specks that lighten and darken equally. The lab draws it 1 speck = 1 screen pixel at any size, which is why it is baked at 3x. Grain that is part of the drawing grows with the icon and reads as "paper mache" (owner, 2026-11-16).
+- **Shapes.** Each picture is one silhouette. Parts are joined by a small rounded corner, never a big flare: the owner called big ones "too welded". Details such as the tag hole are cut through the shape, never a second layer on top.
 - **A speed fix never changes the look.** Prove a speed fix with a pixel diff against the old screenshots. A sharpened shape was rejected as "you removed the core design".
 - **Adding or changing a picture:**
-  - Draw it in [silhouettes.html](../empty-lab/silhouettes.html).
-  - Copy it into `ART` in [scripts/bake-empty-pics.mjs](../scripts/bake-empty-pics.mjs).
-  - Run `node scripts/bake-empty-pics.mjs`. It needs Edge and `py` with Pillow.
+  - Draw it in [a4-grain.html](../empty-lab/a4-grain.html). Its shapes are shared with a4-orb.html; `a4-mag.py` and `a4-person.py` rebuild the magnifier and person paths.
+  - Map the picture to its card in `PICS` in [scripts/bake-empty-pics.mjs](../scripts/bake-empty-pics.mjs).
+  - Run `node scripts/bake-empty-pics.mjs`. It needs Edge, playwright-core and python3 with Pillow.
   - Add its name to the prefetch list in pos-core.js.
+  - Each picture's pattern is the lab card's, fixed by the map, so it never changes when the POS adds or reorders pages.
 
 **The lab files** are all in [empty-lab/](../empty-lab/):
 
 | Option | Files |
 |---|---|
-| **B: silhouette (picked)** | [b3-silhouette](../empty-lab/b3-silhouette.html) (C1), [b2-silhouette](../empty-lab/b2-silhouette.html), [b-silhouette](../empty-lab/b-silhouette.html), [b2-copy](../empty-lab/b2-copy.html) |
+| **Grain (in the app, 2026-11-16)** | [a4-grain](../empty-lab/a4-grain.html), [a3-grain](../empty-lab/a3-grain.html), [a3-grain-copy](../empty-lab/a3-grain-copy.html) |
+| Orb (liked, same shapes) | [a4-orb](../empty-lab/a4-orb.html), [a3-orb](../empty-lab/a3-orb.html), [a3-orb-copy](../empty-lab/a3-orb-copy.html) |
+| Both, icons only | [a4-icons](../empty-lab/a4-icons.html) |
+| **B: silhouette (before)** | [b3-silhouette](../empty-lab/b3-silhouette.html) (C1), [b2-silhouette](../empty-lab/b2-silhouette.html), [b-silhouette](../empty-lab/b-silhouette.html), [b2-copy](../empty-lab/b2-copy.html) |
 | All drawings | [silhouettes](../empty-lab/silhouettes.html) |
 | A: glass | [a2-glass](../empty-lab/a2-glass.html), [a-glass](../empty-lab/a-glass.html), [a2-copy](../empty-lab/a2-copy.html) |
 | C: gradient | [c2-gradient](../empty-lab/c2-gradient.html), [c-gradient](../empty-lab/c-gradient.html), [c2-copy](../empty-lab/c2-copy.html) |
