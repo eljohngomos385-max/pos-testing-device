@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · A4 Grain</title>
+<style>
+  /* body.light-theme in pos-lab/styles.css — white first */
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+    --cta-solid: #4388F7;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --page: #EDEDED;
+  }
+  /* pos-lab/styles.css :root (dark) */
+  body.dark {
+    --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+    --page: #0A0A0A;
+  }
+  /* grain recipe — measured on ref-11, see refs/a3-grain-notes.md; one shared filter per theme */
+  .tone { filter: url(#toneL); }
+  body.dark .tone { filter: url(#toneD); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-tertiary); margin-top: 4px; letter-spacing: 0; }
+  .toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+  .toggle button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  body.dark .toggle button[aria-pressed="true"] { background: var(--surface); }
+  main { padding: 0 40px 48px; }
+  h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 30px 0 14px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px 18px; }
+  figure { margin: 0; }
+  .card { width: 300px; height: 420px; background: var(--bg); border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 20px; text-align: center; border: 1px solid var(--line); }
+  .card svg { width: 128px; height: 128px; margin-bottom: 26px; }
+  .card b { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .card p { margin: 8px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-tertiary); }
+  figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>A4 · Grain<small>A3 Grain with the A4 Orb shapes: parts welded with round fillets, plain bar chart, clock hands from the centre, crisp cut-outs.</small></h1>
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="tLight" aria-pressed="true">Light</button>
+    <button id="tDark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<main id="main"></main>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="shared"></defs></svg>
+
+<script>
+// grey 0 (navy) … 1 (lightest) → colour. Light = ref-11's ramp re-hued in OKLCH to #4388F7 (chroma ×1.8).
+const RAMP_L = ['#0045A6','#024EB6','#0356C7','#145FD0','#1D69DD','#2372EB','#2F7BF4','#3C85FB','#4A8FFF','#5B99FC','#6AA3FE','#79ACFE','#86B5FF','#99BEF8','#A9C6F5','#BDCFEC','#CAD7EC'];
+// Dark: a guess (no ref) — navy L .30 → soft sky L .74, never grey.
+const RAMP_D = ['#0A2B5F','#053072','#003584','#003C94','#0043A1','#004AAF','#0151BD','#0959C9','#1B62D0','#2B6CD3','#3B76D4','#4C80D3','#5D89D0','#6D92CE','#789BD3','#82A4D8','#8DACDE'];
+const RIM_SD = 6, RIM_K = .42;   // rim band: silhouette blurred 6 units (≈ 6 % of the object), darkens up to .42
+const GRAIN = { bf: 2.2, sd: .36, k: .78 };   // ≈ 1.5 device px grain; on the 2x shot std 6.7/255, autocorr .40 at 1px = ref
+
+const tbl = (ramp, c) => ramp.map(h => (parseInt(h.slice(1 + 2 * c, 3 + 2 * c), 16) / 255).toFixed(3)).join(' ');
+const tone = (id, ramp) => `<filter id="${id}" color-interpolation-filters="sRGB">
+  <feComponentTransfer result="col"><feFuncR type="table" tableValues="${tbl(ramp, 0)}"/><feFuncG type="table" tableValues="${tbl(ramp, 1)}"/><feFuncB type="table" tableValues="${tbl(ramp, 2)}"/></feComponentTransfer>
+  <feTurbulence type="fractalNoise" baseFrequency="${GRAIN.bf}" numOctaves="1" seed="7"/>
+  <feColorMatrix type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1"/>
+  <feGaussianBlur stdDeviation="${GRAIN.sd}" result="n"/>
+  <feComposite in="col" in2="n" operator="arithmetic" k2="1" k3="${GRAIN.k}" k4="${-GRAIN.k / 2}"/>
+</filter>`;
+shared.innerHTML = tone('toneL', RAMP_L) + tone('toneD', RAMP_D) +
+  `<filter id="rim" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${RIM_SD}"/>
+   <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  ${-RIM_K} 0 0 0 ${RIM_K}"/></filter>`;
+
+// Shapes shared with a4-orb.html: one welded silhouette (body) minus cut-outs (cut). 140-unit box.
+const seal = (() => {  // discount badge: 12 soft scallops
+  let d = '';
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * 2 * Math.PI - Math.PI / 2, r = i % 2 ? 60 : 50;
+    const x = (70 + r * Math.cos(a)).toFixed(1), y = (70 + r * Math.sin(a)).toFixed(1);
+    d += i === 0 ? `M${x} ${y}` : i % 2 ? `Q${x} ${y} ` : `${x} ${y}`;
+  }
+  const a = -Math.PI / 2; return d + `${(70 + 50 * Math.cos(a)).toFixed(1)} ${(70 + 50 * Math.sin(a)).toFixed(1)}Z`;
+})();
+// Polygon → path with every corner rounded by its own radius (convex or concave), [x, y, r] per vertex.
+function roundPoly(pts) {
+  const n = pts.length; let d = '';
+  pts.forEach(([x, y, r], i) => {
+    const [ax, ay] = pts[(i + n - 1) % n], [bx, by] = pts[(i + 1) % n];
+    const l1 = Math.hypot(ax - x, ay - y), l2 = Math.hypot(bx - x, by - y);
+    const u1 = [(ax - x) / l1, (ay - y) / l1], u2 = [(bx - x) / l2, (by - y) / l2];
+    const t = r / Math.tan(Math.acos(u1[0] * u2[0] + u1[1] * u2[1]) / 2);
+    const sweep = (x - ax) * (by - y) - (y - ay) * (bx - x) > 0 ? 1 : 0;
+    const p = v => v.toFixed(2);
+    d += `${i ? 'L' : 'M'}${p(x + u1[0] * t)} ${p(y + u1[1] * t)}A${r} ${r} 0 0 ${sweep} ${p(x + u2[0] * t)} ${p(y + u2[1] * t)}`;
+  });
+  return d + 'Z';
+}
+// Fillet for a square concave join at (x, y): fills the corner toward (dx, dy) = ±1 with a radius-r curve.
+const weld = (x, y, r, dx, dy) => `<path d="M${x} ${y}L${x} ${y + dy * r}A${r} ${r} 0 0 ${dx * dy > 0 ? 1 : 0} ${x + dx * r} ${y}Z"/>`;
+const teeth = (() => { const p = [[28, 18, 12], [112, 18, 12]];   // receipt: top corners + 5 soft teeth along the bottom
+  for (let i = 0; i <= 10; i++) p.push([112 - 8.4 * i, i % 2 ? 112 : 122, 2.5]);
+  return p; })();
+const ART = {
+  search: {   /* lens ring + handle, one path: a small 6-unit fillet where the handle meets the ring, one path */
+    body: '<path transform="translate(58 58) rotate(45)" d="M38.77 16.14A6 6 0 0 1 44.24 12.45L82.14 12.00A12 12 0 0 0 82.14 -12.00L44.24 -12.45A6 6 0 0 1 38.77 -16.14A42 42 0 1 0 38.77 16.14Z"/>',
+    cut:  '<circle cx="58" cy="58" r="25"/>',
+  },
+  tag: {
+    body: `<path d="${roundPoly([[56,30,8],[124,30,12],[124,110,12],[56,110,8],[16,70,8]])}"/>`,
+    cut:  '<circle cx="46" cy="70" r="8"/>',
+  },
+  folder: {
+    body: `<path d="${roundPoly([[14,28,12],[58,28,6],[68,42,6],[126,42,12],[126,116,12],[14,116,12]])}"/>`,
+  },
+  box: {   /* open box: flaps grow out of the body's top corners */
+    body: `<path d="${roundPoly([[22,120,12],[22,56,6],[8,32,5],[60,36,4],[66,56,3.5],[74,56,3.5],[80,36,4],[132,32,5],[118,56,6],[118,120,12]])}"/>`,
+    cut:  '<rect x="54" y="76" width="32" height="8" rx="4"/>',
+  },
+  bag: {
+    body: '<path fill-rule="evenodd" d="M44 58V44A26 26 0 0 1 96 44V58H84V44A14 14 0 0 0 56 44V58Z"/><path d="M26 64Q26 52 38 52H102Q114 52 114 64L118 110Q119 122 107 122H33Q21 122 22 110Z"/>'
+        + weld(44, 52, 5, -1, -1) + weld(56, 52, 5, 1, -1) + weld(84, 52, 5, -1, -1) + weld(96, 52, 5, 1, -1),
+  },
+  receipt: {
+    body: `<path d="${roundPoly(teeth)}"/>`,
+    cut:  '<rect x="44" y="40" width="52" height="8" rx="4"/><rect x="44" y="58" width="36" height="8" rx="4"/><rect x="44" y="84" width="52" height="8" rx="4"/>',
+  },
+  calendar: {
+    body: '<rect x="18" y="28" width="104" height="92" rx="16"/><rect x="38" y="14" width="14" height="26" rx="7"/><rect x="88" y="14" width="14" height="26" rx="7"/>'
+        + weld(38, 28, 5, -1, -1) + weld(52, 28, 5, 1, -1) + weld(88, 28, 5, -1, -1) + weld(102, 28, 5, 1, -1),
+    cut:  '<rect x="80" y="82" width="24" height="22" rx="6"/>',
+  },
+  select: {   /* a list panel: rows cut into it */
+    body: '<rect x="18" y="18" width="104" height="104" rx="18"/>',
+    cut:  '<circle cx="40" cy="44" r="6"/><rect x="54" y="40" width="46" height="8" rx="4"/><circle cx="40" cy="70" r="6"/><rect x="54" y="66" width="34" height="8" rx="4"/><circle cx="40" cy="96" r="6"/><rect x="54" y="92" width="40" height="8" rx="4"/>',
+  },
+  grid: {   /* four rounded tiles side by side: one plane, one light, nothing on top of anything */
+    body: '<rect x="18" y="18" width="48" height="48" rx="15"/><rect x="74" y="18" width="48" height="48" rx="15"/><rect x="18" y="74" width="48" height="48" rx="15"/><rect x="74" y="74" width="48" height="48" rx="15"/>',
+  },
+  toggle: {   /* "on" track, the knob is a hole (white like a real knob) */
+    body: '<rect x="10" y="40" width="120" height="60" rx="30"/>',
+    cut:  '<circle cx="100" cy="70" r="20"/>',
+  },
+  plus: {
+    body: '<circle cx="70" cy="70" r="54"/>',
+    cut:  '<rect x="65" y="44" width="10" height="52" rx="5"/><rect x="44" y="65" width="52" height="10" rx="5"/>',
+  },
+  percent: {
+    body: `<path d="${seal}"/>`,
+    cut:  '<circle cx="54" cy="54" r="8"/><circle cx="86" cy="86" r="8"/><rect x="-5" y="-30" width="10" height="60" rx="5" transform="translate(70 70) rotate(45)"/>',
+  },
+  person: {   /* head on a half-ellipse of shoulders, a tiny 2.5-unit fillet softens the join */
+    body: '<path d="M55.68 69.70A26 26 0 1 1 84.32 69.70A2.5 2.5 0 0 0 84.98 74.18A46 40 0 0 1 116.00 112L116.00 116A6 6 0 0 1 110.00 122L30.00 122A6 6 0 0 1 24.00 116L24.00 112A46 40 0 0 1 55.02 74.18A2.5 2.5 0 0 0 55.68 69.70Z"/>',
+  },
+  cash: {
+    body: '<rect x="12" y="32" width="116" height="76" rx="14"/>',
+    cut:  '<circle cx="70" cy="70" r="17"/><circle cx="32" cy="70" r="5"/><circle cx="108" cy="70" r="5"/>',
+  },
+  clock: {
+    body: '<circle cx="70" cy="70" r="54"/>',
+    cut:  '<path d="M70 36V70H96" fill="none" stroke="#000" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>',
+  },
+  printer: {
+    body: '<rect x="38" y="16" width="64" height="40" rx="8"/><rect x="12" y="46" width="116" height="58" rx="16"/><rect x="36" y="90" width="68" height="34" rx="6"/>'
+        + weld(38, 46, 6, -1, -1) + weld(102, 46, 6, 1, -1) + weld(36, 104, 6, -1, 1) + weld(104, 104, 6, 1, 1),
+    cut:  '<rect x="26" y="86" width="88" height="5" rx="2.5"/><circle cx="108" cy="66" r="6"/><rect x="48" y="102" width="44" height="6" rx="3"/>',
+  },
+  bars: {   /* a plain bar chart: three separate bars on one baseline */
+    body: '<rect x="18" y="62" width="28" height="60" rx="9"/><rect x="56" y="24" width="28" height="98" rx="9"/><rect x="94" y="44" width="28" height="78" rx="9"/>',
+  },
+};
+
+const PAGES = [
+  ['Sell', [
+    ['search',  'No results',               'Try another word or spelling.',      'Sell · search'],
+    ['tag',     'No items yet',             'Add items to start selling.',        'Sell · catalog empty'],
+    ['folder',  'No items in this category','Move items here from Items.',        'Sell · empty category'],
+    ['box',     'All sold out',             'Every option of this item is out.',  'Sell · variants sold out'],
+    ['bag',     'Cart is empty',            'Tap an item to add it.',             'Sell · cart'],
+    ['search',  'No customer found',        'Check the name or phone number.',    'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',            'Sales on this POS show up here.',    'Orders · no orders'],
+    ['calendar','Nothing sold today',       'Today’s sales show up here.',        'Orders · today'],
+    ['search',  'No orders match',          'Try clearing a filter.',             'Orders · filters'],
+    ['select',  'No order selected',        'Pick one from the list.',            'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['tag',     'No items yet',             'Add your first item with +.',        'Items · items'],
+    ['grid',    'No categories',            'Group items, like Drinks or Snacks.','Items · categories'],
+    ['toggle',  'No modifiers yet',         'Choices like size or sugar level.',  'Items · modifiers'],
+    ['plus',    'No add-ons yet',           'Extras sold with an item.',          'Items · add-ons'],
+    ['percent', 'No discounts yet',         'Save one to use at checkout.',       'Items · discounts'],
+  ]],
+  ['Customers', [
+    ['person',  'No customers yet',         'Save a customer to see their orders.','Customers · list'],
+    ['select',  'No customer selected',     'Pick one from the list.',            'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',    'No cash in or out yet',    'Drawer money moves show up here.',   'Shift · cash in / out'],
+    ['clock',   'No past shifts yet',       'Each closed shift shows up here.',   'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['bars',    'Nothing sold today',       'Sales show up here as they happen.', 'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',     'Tap Scan to search your Wi-Fi.',     'Settings · printers'],
+  ]],
+];
+
+// Mottle in object units (ref: patches 3–22 % of the ball, navy core low, wider than tall).
+// Each blob darkens by 1 − exp(−w·gauss), as in the copy; a seeded jitter so no two look stamped.
+const rng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const stops = w => Array.from({ length: 13 }, (_, i) => { const t = i / 12;
+  return `<stop offset="${t.toFixed(3)}" stop-opacity="${(1 - Math.exp(-w * (Math.exp(-4.5 * t * t) - Math.exp(-4.5)))).toFixed(4)}"/>`; }).join('');
+// The object's own box, measured once from its silhouette (drives where the mottle sits).
+const bbox = body => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.innerHTML = `<g>${body}</g>`; document.body.appendChild(s); const b = s.firstChild.getBBox(); s.remove();
+  return [b.x, b.y, b.x + b.width, b.y + b.height]; };
+let n = 0;
+function svg(a) {
+  const id = 'p' + (n++), r = rng(n * 7919 + 13);
+  const [x0, y0, x1, y1] = a.box || bbox(a.body), w = x1 - x0, h = y1 - y0, s = Math.max(w, h);
+  const blobs = [   // [cx, cy, σx, σy, angle°, weight]
+    [x0 + w * (.3 + .4 * r()), y0 + h * (.74 + .18 * r()), .16 * s, .13 * s, 0, 1.9 + .4 * r()],          // navy core
+    [x0 + w * (.45 + .35 * r()), y0 + h * (.18 + .2 * r()), .32 * s, .11 * s, -35 + 70 * r(), .95],      // mid streak
+    [x0 + w * (.05 + .3 * r()), y0 + h * (.35 + .3 * r()), .24 * s, .09 * s, 50 + 70 * r(), .6],        // second streak
+  ];
+  const grads = blobs.map(([cx, cy, sx, sy, an, wt], i) =>
+    `<radialGradient id="${id}b${i}" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="${3 * sx}" gradientTransform="translate(${cx} ${cy}) rotate(${an}) scale(1 ${sy / sx})">${stops(wt)}</radialGradient>`).join('');
+  const holes = a.holes || a.cut;
+  const shape = (on, off) => `<g fill="${on}" color="${on}">${a.body}</g>${holes ? `<g fill="${off}" color="${off}">${holes}</g>` : ''}`;
+  return `<svg viewBox="0 0 140 140" aria-hidden="true">
+  <defs>${grads}<mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="140" height="140">${shape('#fff', '#000')}</mask></defs>
+  <g mask="url(#${id}m)"><g class="tone">
+    <rect width="140" height="140" fill="#fff"/>
+    ${blobs.map((_, i) => `<rect width="140" height="140" fill="url(#${id}b${i})"/>`).join('')}
+    <g filter="url(#rim)"><rect x="-20" y="-20" width="180" height="180" fill="#000"/><g fill="#fff">${a.body}</g></g>
+  </g></g>
+</svg>`;
+}
+document.getElementById('main').innerHTML = PAGES.map(([page, states]) =>
+  `<h2>${page}</h2><div class="grid">${states.map(([art, t, line, label]) =>
+    `<figure><div class="card">${svg(ART[art])}<b>${t}</b><p>${line}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('')}</div>`).join('');
+
+const setTheme = dark => {
+  document.body.classList.toggle('dark', dark);
+  tDark.setAttribute('aria-pressed', dark);
+  tLight.setAttribute('aria-pressed', !dark);
+};
+tDark.onclick = () => setTheme(true);
+tLight.onclick = () => setTheme(false);
+if (location.hash === '#dark') setTheme(true);
+</script>
+</body>
+</html>

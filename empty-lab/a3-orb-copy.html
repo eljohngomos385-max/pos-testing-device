@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orb copy · ref-12</title>
+<style>
+  /* ref-12 top orb, crop x176–576 y25–425 (orb centre 200.19,200.16, r 158.71). Numbers: refs/a3-orb-notes.md.
+     Written the way a3-orb.html uses it: body gradient in the shape's own box, rim = a filter that follows any edge. */
+  html, body { margin: 0; background: #F5F5F5; }
+  svg { display: block; width: 400px; height: 400px; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 400 400" aria-hidden="true">
+  <defs>
+    <!-- body: one focal radial gradient; the focal point is the violet core (44% across, 31% down the box) -->
+    <radialGradient id="body" fx="0.4444" fy="0.31" cx="0.4789" cy="0.4189" r="0.5906">
+      <stop offset="0"      stop-color="#6148F4"/>
+      <stop offset="0.1389" stop-color="#5852F6"/>
+      <stop offset="0.2778" stop-color="#4E5CF7"/>
+      <stop offset="0.4167" stop-color="#4369F8"/>
+      <stop offset="0.5556" stop-color="#3875FC"/>
+      <stop offset="0.6944" stop-color="#548DFB"/>
+      <stop offset="0.8333" stop-color="#7AABFC"/>
+      <stop offset="0.9722" stop-color="#A7D3FB"/>
+      <stop offset="1"      stop-color="#B0DBFB"/>
+    </radialGradient>
+    <!-- rim: Mist .8 × (1 − the shape's alpha blurred by σ = 2.5% of the diameter), inside the edge only -->
+    <filter id="rim" x="-.1" y="-.1" width="1.2" height="1.2" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="8" result="b"/>
+      <feComposite in="SourceAlpha" in2="b" operator="arithmetic" k2="1" k3="-1" result="ring"/>
+      <feFlood flood-color="#C9EEFF" flood-opacity=".8"/>
+      <feComposite in2="ring" operator="in" result="mist"/>
+      <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="mist"/></feMerge>
+    </filter>
+    <!-- edge: 0.8 px blur (0.25% of the diameter); nothing spills further, no glow -->
+    <filter id="edge" x="-.1" y="-.1" width="1.2" height="1.2"><feGaussianBlur stdDeviation="0.8"/></filter>
+  </defs>
+  <g filter="url(#edge)"><g filter="url(#rim)">
+    <circle cx="200.19" cy="200.16" r="158.71" fill="url(#body)"/>
+  </g></g>
+</svg>
+</body>
+</html>

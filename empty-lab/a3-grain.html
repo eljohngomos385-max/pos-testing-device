@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empty states · A3 Grain</title>
+<style>
+  /* body.light-theme in pos-lab/styles.css — white first */
+  :root {
+    --bg: #FFFFFF; --bg-soft: #EDEDED; --surface: #F9F9F9; --line: #E1E1E1;
+    --ink: #303030; --ink-secondary: #616161; --ink-tertiary: #8C8C8C;
+    --cta-solid: #4388F7;
+    --font-stack: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --page: #EDEDED;
+  }
+  /* pos-lab/styles.css :root (dark) */
+  body.dark {
+    --bg: #121212; --bg-soft: #1C1C1C; --surface: #2A2A2A; --line: rgba(255,255,255,.08);
+    --ink: #FFFFFF; --ink-secondary: rgba(255,255,255,.70); --ink-tertiary: rgba(255,255,255,.45);
+    --page: #0A0A0A;
+  }
+  /* grain recipe — measured on ref-11, see refs/a3-grain-notes.md; one shared filter per theme */
+  .tone { filter: url(#toneL); }
+  body.dark .tone { filter: url(#toneD); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--font-stack); -webkit-font-smoothing: antialiased; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 28px 40px 8px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+  h1 small { display: block; font-size: 13px; font-weight: 400; color: var(--ink-tertiary); margin-top: 4px; letter-spacing: 0; }
+  .toggle { display: flex; background: var(--bg-soft); border-radius: 999px; padding: 3px; }
+  .toggle button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--ink-secondary); padding: 7px 16px; border-radius: 999px; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+  body.dark .toggle button[aria-pressed="true"] { background: var(--surface); }
+  main { padding: 0 40px 48px; }
+  h2 { font-size: 15px; font-weight: 600; color: var(--ink-secondary); margin: 30px 0 14px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 22px 18px; }
+  figure { margin: 0; }
+  .card { width: 300px; height: 420px; background: var(--bg); border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 20px; text-align: center; border: 1px solid var(--line); }
+  .card svg { width: 128px; height: 128px; margin-bottom: 26px; }
+  .card b { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+  .card p { margin: 8px 0 0; font-size: 14px; line-height: 1.35; color: var(--ink-tertiary); }
+  figcaption { font-size: 12px; color: var(--ink-tertiary); margin-top: 8px; padding-left: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>A3 · Grain<small>One solid object per state, filled with ref-11's cloudy blue and fine film grain. No layers, no see-through.</small></h1>
+  <div class="toggle" role="group" aria-label="Theme">
+    <button id="tLight" aria-pressed="true">Light</button>
+    <button id="tDark" aria-pressed="false">Dark</button>
+  </div>
+</header>
+<main id="main"></main>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs id="shared"></defs></svg>
+
+<script>
+// grey 0 (navy) … 1 (lightest) → colour. Light = ref-11's ramp re-hued in OKLCH to #4388F7 (chroma ×1.8).
+const RAMP_L = ['#0045A6','#024EB6','#0356C7','#145FD0','#1D69DD','#2372EB','#2F7BF4','#3C85FB','#4A8FFF','#5B99FC','#6AA3FE','#79ACFE','#86B5FF','#99BEF8','#A9C6F5','#BDCFEC','#CAD7EC'];
+// Dark: a guess (no ref) — navy L .30 → soft sky L .74, never grey.
+const RAMP_D = ['#0A2B5F','#053072','#003584','#003C94','#0043A1','#004AAF','#0151BD','#0959C9','#1B62D0','#2B6CD3','#3B76D4','#4C80D3','#5D89D0','#6D92CE','#789BD3','#82A4D8','#8DACDE'];
+const RIM_SD = 6, RIM_K = .42;   // rim band: silhouette blurred 6 units (≈ 6 % of the object), darkens up to .42
+const GRAIN = { bf: 2.2, sd: .36, k: .78 };   // ≈ 1.5 device px grain; on the 2x shot std 6.7/255, autocorr .40 at 1px = ref
+
+const tbl = (ramp, c) => ramp.map(h => (parseInt(h.slice(1 + 2 * c, 3 + 2 * c), 16) / 255).toFixed(3)).join(' ');
+const tone = (id, ramp) => `<filter id="${id}" color-interpolation-filters="sRGB">
+  <feComponentTransfer result="col"><feFuncR type="table" tableValues="${tbl(ramp, 0)}"/><feFuncG type="table" tableValues="${tbl(ramp, 1)}"/><feFuncB type="table" tableValues="${tbl(ramp, 2)}"/></feComponentTransfer>
+  <feTurbulence type="fractalNoise" baseFrequency="${GRAIN.bf}" numOctaves="1" seed="7"/>
+  <feColorMatrix type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1"/>
+  <feGaussianBlur stdDeviation="${GRAIN.sd}" result="n"/>
+  <feComposite in="col" in2="n" operator="arithmetic" k2="1" k3="${GRAIN.k}" k4="${-GRAIN.k / 2}"/>
+</filter>`;
+shared.innerHTML = tone('toneL', RAMP_L) + tone('toneD', RAMP_D) +
+  `<filter id="rim" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="${RIM_SD}"/>
+   <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  ${-RIM_K} 0 0 0 ${RIM_K}"/></filter>`;
+
+// Each art = ONE silhouette (body, unioned) minus cut-outs (holes, show the card). box = the main body, for the mottle.
+// Shapes inherit fill; stroked parts use currentColor. 140-unit box.
+const ART = {
+  search: { box: [22, 20, 98, 96],
+    body: '<circle cx="60" cy="58" r="38"/><rect x="-11" y="0" width="22" height="50" rx="11" transform="translate(80 78) rotate(-45)"/>',
+    holes: '<circle cx="60" cy="58" r="22"/>' },
+  tag: { box: [22, 40, 120, 106],
+    body: '<path transform="rotate(-10 72 73)" d="M58 40H110Q120 40 120 50V96Q120 106 110 106H58Q53 106 49 102L26 79Q21 73 26 67L49 44Q53 40 58 40Z"/>',
+    holes: '<circle cx="46" cy="76.5" r="7.5" transform="rotate(-10 72 73)"/>' },
+  folder: { box: [18, 30, 122, 114],
+    body: '<path d="M18 40Q18 30 28 30H54Q61 30 65 36L70 43H112Q122 43 122 53V104Q122 114 112 114H28Q18 114 18 104Z"/>' },
+  box: { box: [24, 34, 116, 118],
+    body: '<path d="M30 64L14 42Q11 36 18 35L56 40Q60 41 61 45L66 64Z"/><path d="M110 64L126 42Q129 36 122 35L84 40Q80 41 79 45L74 64Z"/><rect x="24" y="58" width="92" height="60" rx="11"/>',
+    holes: '<rect x="54" y="78" width="32" height="8" rx="4"/>' },
+  bag: { box: [24, 48, 116, 122],
+    body: '<path d="M28 58Q28 48 38 48H102Q112 48 112 58L116 110Q117 122 105 122H35Q23 122 24 110Z"/><path d="M50 60V44A20 20 0 0 1 90 44V60" fill="none" stroke="currentColor" stroke-width="11" stroke-linecap="round"/>' },
+  receipt: { box: [34, 20, 106, 120],
+    body: '<path d="M34 30Q34 20 44 20H96Q106 20 106 30V120L98.8 113L91.6 120L84.4 113L77.2 120L70 113L62.8 120L55.6 113L48.4 120L41.2 113L34 120Z"/>',
+    holes: '<rect x="48" y="38" width="44" height="7" rx="3.5"/><rect x="48" y="54" width="30" height="7" rx="3.5"/><rect x="48" y="86" width="44" height="7" rx="3.5"/>' },
+  calendar: { box: [20, 30, 120, 118],
+    body: '<rect x="20" y="30" width="100" height="88" rx="16"/><rect x="38" y="14" width="13" height="30" rx="6.5"/><rect x="89" y="14" width="13" height="30" rx="6.5"/>',
+    holes: '<rect x="32" y="52" width="76" height="5" rx="2.5"/><rect x="78" y="78" width="22" height="22" rx="6"/>' },
+  select: { box: [24, 18, 116, 122],
+    body: '<rect x="24" y="18" width="92" height="104" rx="16"/>',
+    holes: '<circle cx="45" cy="46" r="5.5"/><circle cx="45" cy="70" r="5.5"/><circle cx="45" cy="94" r="5.5"/><rect x="58" y="42" width="40" height="8" rx="4"/><rect x="58" y="66" width="30" height="8" rx="4"/><rect x="58" y="90" width="36" height="8" rx="4"/>' },
+  grid: { box: [18, 18, 122, 122],
+    body: '<rect x="18" y="18" width="104" height="104" rx="24"/>',
+    holes: '<rect x="33" y="33" width="31" height="31" rx="8"/><rect x="76" y="33" width="31" height="31" rx="8"/><rect x="33" y="76" width="31" height="31" rx="8"/><rect x="76" y="76" width="31" height="31" rx="8"/>' },
+  toggle: { box: [12, 40, 128, 100],
+    body: '<rect x="12" y="40" width="116" height="60" rx="30"/>',
+    holes: '<circle cx="98" cy="70" r="21"/>' },
+  plus: { box: [20, 20, 120, 120],
+    body: '<rect x="20" y="20" width="100" height="100" rx="28"/>',
+    holes: '<rect x="63" y="42" width="14" height="56" rx="7"/><rect x="42" y="63" width="56" height="14" rx="7"/>' },
+  percent: { box: [18, 18, 122, 122],
+    body: (() => {   // a scalloped price seal: 12 bumps
+      let d = '';
+      for (let i = 0; i < 12; i++) {
+        const a = i / 12 * 2 * Math.PI, b = (i + .5) / 12 * 2 * Math.PI, p = (r, t) => `${(70 + r * Math.sin(t)).toFixed(2)} ${(70 - r * Math.cos(t)).toFixed(2)}`;
+        d += (i ? 'L' : 'M') + p(46, a) + 'Q' + p(60, b) + ' ' + p(46, (i + 1) / 12 * 2 * Math.PI);
+      }
+      return `<path d="${d}Z"/>`;
+    })(),
+    holes: '<circle cx="54" cy="54" r="9"/><circle cx="86" cy="86" r="9"/><rect x="-5" y="-30" width="10" height="60" rx="5" transform="translate(70 70) rotate(40)"/>' },
+  person: { box: [26, 20, 114, 122],
+    body: '<circle cx="70" cy="48" r="27"/><path d="M24 116Q24 76 70 76Q116 76 116 116Q116 122 110 122H30Q24 122 24 116Z"/>' },
+  cash: { box: [14, 34, 126, 106],
+    body: '<rect x="14" y="34" width="112" height="72" rx="14"/>',
+    holes: '<circle cx="70" cy="70" r="15"/><circle cx="32" cy="52" r="4.5"/><circle cx="108" cy="88" r="4.5"/>' },
+  clock: { box: [18, 18, 122, 122],
+    body: '<circle cx="70" cy="70" r="52"/>',
+    holes: '<rect x="64" y="34" width="12" height="42" rx="6"/><rect x="64" y="64" width="34" height="12" rx="6"/>' },
+  printer: { box: [14, 18, 126, 124],
+    body: '<rect x="36" y="18" width="68" height="46" rx="9"/><rect x="14" y="50" width="112" height="56" rx="16"/><rect x="36" y="96" width="68" height="28" rx="7"/>',
+    holes: '<rect x="30" y="88" width="80" height="5" rx="2.5"/><circle cx="108" cy="68" r="5"/>' },
+  bars: { box: [16, 26, 124, 122],
+    body: '<rect x="24" y="56" width="24" height="60" rx="9"/><rect x="58" y="26" width="24" height="90" rx="9"/><rect x="92" y="44" width="24" height="72" rx="9"/><rect x="16" y="106" width="108" height="16" rx="8"/>' },
+};
+
+const PAGES = [
+  ['Sell', [
+    ['search',  'No results',               'Try another word or spelling.',      'Sell · search'],
+    ['tag',     'No items yet',             'Add items to start selling.',        'Sell · catalog empty'],
+    ['folder',  'No items in this category','Move items here from Items.',        'Sell · empty category'],
+    ['box',     'All sold out',             'Every option of this item is out.',  'Sell · variants sold out'],
+    ['bag',     'Cart is empty',            'Tap an item to add it.',             'Sell · cart'],
+    ['search',  'No customer found',        'Check the name or phone number.',    'Sell · customer picker'],
+  ]],
+  ['Orders', [
+    ['receipt', 'No orders yet',            'Sales on this POS show up here.',    'Orders · no orders'],
+    ['calendar','Nothing sold today',       'Today’s sales show up here.',        'Orders · today'],
+    ['search',  'No orders match',          'Try clearing a filter.',             'Orders · filters'],
+    ['select',  'No order selected',        'Pick one from the list.',            'Orders · iPad detail pane'],
+  ]],
+  ['Items', [
+    ['tag',     'No items yet',             'Add your first item with +.',        'Items · items'],
+    ['grid',    'No categories',            'Group items, like Drinks or Snacks.','Items · categories'],
+    ['toggle',  'No modifiers yet',         'Choices like size or sugar level.',  'Items · modifiers'],
+    ['plus',    'No add-ons yet',           'Extras sold with an item.',          'Items · add-ons'],
+    ['percent', 'No discounts yet',         'Save one to use at checkout.',       'Items · discounts'],
+  ]],
+  ['Customers', [
+    ['person',  'No customers yet',         'Save a customer to see their orders.','Customers · list'],
+    ['select',  'No customer selected',     'Pick one from the list.',            'Customers · iPad detail pane'],
+  ]],
+  ['Shift', [
+    ['cash',    'No cash in or out yet',    'Drawer money moves show up here.',   'Shift · cash in / out'],
+    ['clock',   'No past shifts yet',       'Each closed shift shows up here.',   'Shift · past shifts'],
+  ]],
+  ['Reports', [
+    ['bars',    'Nothing sold today',       'Sales show up here as they happen.', 'Reports · today'],
+  ]],
+  ['Settings', [
+    ['printer', 'No printer connected',     'Tap Scan to search your Wi-Fi.',     'Settings · printers'],
+  ]],
+];
+
+// Mottle in object units (ref: patches 3–22 % of the ball, navy core low, wider than tall).
+// Each blob darkens by 1 − exp(−w·gauss), as in the copy; a seeded jitter so no two look stamped.
+const rng = s => () => (s = (s * 16807) % 2147483647) / 2147483647;
+const stops = w => Array.from({ length: 13 }, (_, i) => { const t = i / 12;
+  return `<stop offset="${t.toFixed(3)}" stop-opacity="${(1 - Math.exp(-w * (Math.exp(-4.5 * t * t) - Math.exp(-4.5)))).toFixed(4)}"/>`; }).join('');
+let n = 0;
+function svg(a) {
+  const id = 'p' + (n++), r = rng(n * 7919 + 13);
+  const [x0, y0, x1, y1] = a.box, w = x1 - x0, h = y1 - y0, s = Math.max(w, h);
+  const blobs = [   // [cx, cy, σx, σy, angle°, weight]
+    [x0 + w * (.3 + .4 * r()), y0 + h * (.74 + .18 * r()), .16 * s, .13 * s, 0, 1.9 + .4 * r()],          // navy core
+    [x0 + w * (.45 + .35 * r()), y0 + h * (.18 + .2 * r()), .32 * s, .11 * s, -35 + 70 * r(), .95],      // mid streak
+    [x0 + w * (.05 + .3 * r()), y0 + h * (.35 + .3 * r()), .24 * s, .09 * s, 50 + 70 * r(), .6],        // second streak
+  ];
+  const grads = blobs.map(([cx, cy, sx, sy, an, wt], i) =>
+    `<radialGradient id="${id}b${i}" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="${3 * sx}" gradientTransform="translate(${cx} ${cy}) rotate(${an}) scale(1 ${sy / sx})">${stops(wt)}</radialGradient>`).join('');
+  const shape = (on, off) => `<g fill="${on}" color="${on}">${a.body}</g>${a.holes ? `<g fill="${off}" color="${off}">${a.holes}</g>` : ''}`;
+  return `<svg viewBox="0 0 140 140" aria-hidden="true">
+  <defs>${grads}<mask id="${id}m" maskUnits="userSpaceOnUse" x="0" y="0" width="140" height="140">${shape('#fff', '#000')}</mask></defs>
+  <g mask="url(#${id}m)"><g class="tone">
+    <rect width="140" height="140" fill="#fff"/>
+    ${blobs.map((_, i) => `<rect width="140" height="140" fill="url(#${id}b${i})"/>`).join('')}
+    <g filter="url(#rim)"><rect x="-20" y="-20" width="180" height="180" fill="#000"/>${shape('#fff', '#000')}</g>
+  </g></g>
+</svg>`;
+}
+document.getElementById('main').innerHTML = PAGES.map(([page, states]) =>
+  `<h2>${page}</h2><div class="grid">${states.map(([art, t, line, label]) =>
+    `<figure><div class="card">${svg(ART[art])}<b>${t}</b><p>${line}</p></div><figcaption>${label}</figcaption></figure>`
+  ).join('')}</div>`).join('');
+
+const setTheme = dark => {
+  document.body.classList.toggle('dark', dark);
+  tDark.setAttribute('aria-pressed', dark);
+  tLight.setAttribute('aria-pressed', !dark);
+};
+tDark.onclick = () => setTheme(true);
+tLight.onclick = () => setTheme(false);
+if (location.hash === '#dark') setTheme(true);
+</script>
+</body>
+</html>
