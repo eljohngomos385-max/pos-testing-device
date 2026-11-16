@@ -188,8 +188,11 @@ function attachEvents() {
       if (g.ctl) try { document.documentElement.setPointerCapture(e.pointerId); } catch {}
       if (g.pg && !g.ctl) {
         g.pg.style.transition = 'none';
-        g.under = [...g.pg.parentElement.children].filter(c => c !== g.pg && c.matches('.o-rail, .page'));   // the list a third left under it moves with the finger too
+        g.under = g.pg.matches('.rail-h') ? [$('.catalog-wrap > .catalog')]   // the phone's cart page: Sell's content under it
+          : [...g.pg.parentElement.children].filter(c => c !== g.pg && c.matches('.o-rail, .page'));   // the list a third left under it moves with the finger too
         g.under.forEach(u => { u.style.transition = 'none'; });
+        g.keep = g.pg.matches('.rail-h') && $('#payBtn');   // the phone's Check out stays on the cart bar's spot under the finger too
+        if (g.keep) g.keep.style.transition = 'none';
       }
     }
     e.stopPropagation();
@@ -198,6 +201,7 @@ function attachEvents() {
     else if (g.pg) {
       g.pg.style.transform = `translate3d(${Math.max(0, dx)}px, 0, 0)`;
       g.under?.forEach(u => { u.style.transform = `translate3d(${-.3 * Math.max(0, g.pg.offsetWidth - Math.max(0, dx))}px, 0, 0)`; });
+      if (g.keep) g.keep.style.transform = `translate3d(${-Math.max(0, dx)}px, 0, 0)`;
     }
     else if (g.open || g.menu) drawer.at(g.from + dx);
   }, true);
@@ -211,13 +215,15 @@ function attachEvents() {
     g.still = e.timeStamp - (g.pts?.at(-1)?.t ?? e.timeStamp) > 80;   // the finger stopped before it lifted: no flick (iOS's way)
     if (g.ctl) return g.ctl.end(e.type === 'pointerup' && swipeGo(g, $('.main').offsetWidth), g.still ? 0 : speed(g));
     const go = e.type === 'pointerup' && swipeGo(g, g.pg ? g.pg.offsetWidth : drawer.w());
-    if (!go) { [g.pg, ...(g.under || [])].forEach(el => el && Object.assign(el.style, { transition: 'transform .28s var(--rl-ease)', transform: '' })); return; }
+    if (!go) { [g.pg, ...(g.under || []), g.keep].forEach(el => el && Object.assign(el.style, { transition: 'transform .28s var(--rl-ease)', transform: '' })); return; }
     if (!g.pg) return g.b.click();
     const pg = g.pg;   // off to the right, then Back; it asked (an editor's changes): the page comes back under the ask
     Object.assign(pg.style, { transition: 'transform .2s var(--rl-ease)', transform: `translate3d(${innerWidth - pg.getBoundingClientRect().left + g.dx}px, 0, 0)` });
     g.under?.forEach(u => Object.assign(u.style, { transition: 'transform .2s var(--rl-ease)', transform: 'translate3d(0, 0, 0)' }));
+    if (g.keep) Object.assign(g.keep.style, { transition: 'transform .2s var(--rl-ease)', transform: `translate3d(${-(innerWidth - pg.getBoundingClientRect().left + g.dx)}px, 0, 0)` });
     setTimeout(() => {
       g.b.click();
+      if (g.keep) { Object.assign(g.keep.style, { transition: 'transform 0s, opacity .2s ease-out', transform: '' }); setTimeout(() => { g.keep.style.transition = ''; }, 300); }   // lands on the bar, its words fade back
       [pg, ...(g.under || [])].forEach(el => Object.assign(el.style, confirmSheet ? { transition: 'transform .28s var(--rl-ease)', transform: '' } : { transition: 'none', transform: '' }));
       setTimeout(() => { [pg, ...(g.under || [])].forEach(el => { el.style.transition = ''; }); }, 300);
     }, 200);
@@ -1265,7 +1271,7 @@ function attachEvents() {
     if (SP) spBack();   // split: one page back
     else if (cashOk) showPayStep();   // Cash's ask step -> the amounts
     else if (qrDone && qrDone === keyNow()) { qrDone = ''; showPayStep(); }   // the step after a picture -> the picture
-    else if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) showCashKeys(false);   // the keys -> the quick amounts
+    else if (state.paymentMethod === 'cash' && !$('#checkoutKeyIn').hidden) cashKeysFade(false);   // the keys -> the quick amounts
     else if (state.paymentMethodChosen) {
       state.paymentMethodChosen = false;
       state.paymentMethod = 'cash';
@@ -1307,7 +1313,7 @@ function attachEvents() {
   $('#qrDoneBtn').addEventListener('click', () => { if (SP) return spAsk(SP.leg); qrDone = keyNow(); showPayStep(); });
   // A cash amount is the decision: the tap finishes the sale.
   $('#checkoutQuick')?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-co-custom]')) return SP ? spGo('typed') : showCashKeys(true);
+    if (e.target.closest('[data-co-custom]')) return SP ? spGo('typed') : cashKeysFade(true);
     const b = e.target.closest('[data-co-cash]');
     if (!b) return;
     if (SP) { Object.assign(SP.leg, { given: moneyValue(+b.dataset.coCash), change: moneyValue(+b.dataset.coCash - SP.leg.amount) }); return completeSale(); }   // split: the cash part, handed over

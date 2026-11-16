@@ -392,10 +392,17 @@ console.assert(quickTenders(245).join() === '245,300,500,1000' && quickTenders(9
   && quickTenders(24318.75).join() === '24318.75,24400,24500,25000' && quickTenders(7.43, 'USD').join() === '7.43,10,20', 'quickTenders');
 
 // The quick row and the keypad take turns: Custom opens the keys, Back closes them.
+// Custom's keys and back (app.js): the cash step's content changes in place, the single fade (owner 2026-11-16); the keys' own
+// fade-in is off under it (inline, till they hide: turned back on as the fade ended, it replayed)
+const cashKeysFade = (on) => fadeSwap('co-go', () => {
+  showCashKeys(on);
+  if (on) for (const el of [$('#checkoutKeyIn'), $('#checkoutKeys')]) el.style.animation = 'none';
+}, $('#checkoutSteps'));
 function showCashKeys(on) {
   const quick = $('#checkoutQuick'), keys = $('#checkoutKeyIn');
   if (!quick || !keys) return;
   quick.hidden = on; keys.hidden = !on;
+  if (!on) for (const el of [keys, $('#checkoutKeys')]) el.style.animation = '';
   $('#checkoutApp').classList.remove('co-kd');   // the phone's keys open up, sliding in (styles: co-kd)
   $('#checkoutTender').value = '';
   updateChange();

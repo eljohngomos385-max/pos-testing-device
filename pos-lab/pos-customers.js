@@ -393,6 +393,8 @@ function reportsPick(i) {
 // The page keeps its place (owner 2026-10-15): a shorter period clamps the scroll, so `y` keeps where the reader was and
 // the next longer one comes back to it -- Today › Yesterday › Today lands where it started.
 function reportsGo(unit, back, slide) {
+  // a step to the period before / after: the figures change in place, the single fade (was a 28px nudge)
+  if (slide === 1 || slide === -1) return fadeSwap('fd-rp', () => reportsGo(unit, back, 'still'), $('.view-reports .rp-body'));
   if (unit !== reportsView.unit) slidePill($('#reportsUnits'), 'unit', unit);
   const sc = $('.view-reports .c-scroll');
   if (sc.scrollTop < sc.scrollHeight - sc.clientHeight - 1 || !(reportsView.y > sc.scrollTop)) reportsView.y = sc.scrollTop;   // not clamped: the reader's own place

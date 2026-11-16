@@ -223,6 +223,17 @@ Apple's rule: a page **slides**, a sheet **pops up**, a pop-up **grows in**. Not
   - **Sale complete comes quicker** (owner 2026-11-16): the paid moment's tick starts at .12s (was .48s), `--pm-t` 1000ms
     (was 1740). The change no longer counts up (it read slow): it grows in figure by figure as Split's money left does
     (`heroPlay`, no snapshot), hidden under the paid moment till it goes.
+  - **The phone's cart page is a ‹ page** (owner 2026-11-16): it slides in from the right on the push tokens with Sell
+    content (`.catalog-wrap > .catalog`, never `.catalog-wrap`: its sheets live in it and a transform there shifted them and
+    put the fixed ones under the cart page) a third left under it, and back; the edge swipe moves it with the finger. Was the grey fading in and
+    the cards nudging 60px (10-13).
+    **Check out is the anchor** (owner 2026-11-16): it sits on Sell's cart bar's very pixels, so it doesn't ride the page; it
+    moves the page's opposite (stays put, also under the swipe) and its words fade over the bar's ("4 items · ₱500" →
+    "Check out · ₱500") and back. Not in Add tile's sheet (`.again`: the same button is Make another) or at the checkout.
+  - **Content that changes in place uses `fadeSwap(cls, fn, bgFrom)`** (pos-core.js): Reports' period step (`fd-rp`, was a 28px
+    nudge), Chat's History in and out (`fd-chat`, was instant), Cash's Custom keys and back (`co-go`, the old content vanished
+    and the keys faded in). The new fades in over the old (.2s), the old a touch behind. Reports' finger swipe between periods
+    keeps following the finger. A new in-place change uses fadeSwap, never its own fade.
   - **Let go and it carries on at the finger's speed**: the finish curve's first slope is set from the finger
     (`cubic-bezier(.3, y1, .325, 1)`, .24–.42s by the distance left); a fixed .14s after a slow hold read as a snap. A finger
     still for 80ms before it lifts is no flick (it went back on a held short swipe).
@@ -233,12 +244,19 @@ Apple's rule: a page **slides**, a sheet **pops up**, a pop-up **grows in**. Not
 - **A full-screen page that is an overlay slides over**: the phone's edit sheet (a modifier's choices, a cart line, Adjust stock,
   a customer) comes in from the right over Sell and **Sell stays still**; ‹ slides it back out. On the iPad it is a sheet beside
   the cart and rises like one.
+  **Except Dine-in's and Discount's** (owner 2026-11-16): quick picks, not pages, so on the phone they **fade**: the ground over
+  the cart page in .12s, the contents just behind it (.2s from .06s), out in .14s, never a bare blank first. `.esheet.es-fade`
+  (pos-sell.js openEditSheet puts it in its own shut state first, without a transition, else it opened from the other's).
 - **Sheets pop up** with today's timing (.24s in / .16s out, `--rl-ease`): "quicker, more responsive" than iOS's slower sheet.
 - **Pop-ups grow in** with today's `centreSheet` (scale .94 → 1, .22s; out .09s).
 - **Menu pages just switch**, as Apple's iPad sidebar apps do; on the phone the menu sliding shut is the motion.
 - **Checkout's parts fade**, nothing rises into place (`co-in` / `co-rise` are opacity only; the phone's keypad and OK fade in).
 
 ## Cross-device / touch
+- **Every `:hover` rule goes inside `@media (hover: hover) { … }`** (owner 2026-11-16). On a phone `:hover` sticks to the last
+  thing touched: a row the finger landed on to start a scroll stayed grey. An open / focus state that shares the rule
+  (`[aria-expanded="true"]`, `:focus-visible`) stays outside the guard; a rule that only clears a hover (`background: none`)
+  stays outside too. Back-office rules (desktop) don't need it.
 
 - **The till's sidebar rules are the till's alone**: the base `.sidebar` / `.side-*` / `.brand-*` / `.user-row` rules, the `#app::before` backdrop and the ≤920px icons-only `@media` block in `styles.css` are all scoped to `:where(#app:not(.bo-app))`, because the back office is `#app` with `.sidebar` / `.side-link` too. A new sidebar rule gets the same scope (`:where()` keeps specificity unchanged).
 - **The menu (pos-lab, owner 2026-11-09)**: the side menu with the page peeking 76 at the right on the phone (`--half-w: calc(100vw - 76px)`), 320 wide on the iPad. Top row: store name, switch; a tap on the peeking page or a swipe closes it. Rows, all in one list: Sell, Orders, Open tickets (food stores only, gated in `canAccess`; view key stays `tables`; the tables themselves are Settings › Store › Tables, `state.settings.tables`), Items, Customers, Shift, Reports, Chat, QR codes, Cash in & out, Back office. Foot: one name row, name · POS on one line, with the gear on the right (Settings keeps its `.side-link`, placed with CSS, so role gating and `switchView` stay as they are). `.side-nav` is the scroller, for the list on a small phone. Dark: the menu's white is **#F8F8F8**, a step under the app's #FFF so it doesn't shine (owner 2026-11-15, measured off DeepSeek's sidebar; `body:not(.light-theme) .sidebar { --ink }`), the menu only.

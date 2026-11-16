@@ -191,6 +191,18 @@ const barcodeScanner = {
 
 // ---------- Helpers ----------
 const peso = (n) => SalesMath.formatMoney(n, state.settings?.store?.currency);
+// Content that changes in place (owner 2026-11-16, the single fade; docs/design-pos.md "Motion"): the new fades in over the old.
+// cls: a class on <html> naming what changes (styles.css: fd-rp, fd-chat, co-go); fn: the change; bgFrom: whose ground goes
+// behind the pictures. No view transitions, or reduced motion: at once.
+function fadeSwap(cls, fn, bgFrom) {
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return fn();
+  const H = document.documentElement;
+  let bg = '';
+  for (let el = bgFrom; el && !bg; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+  H.style.setProperty('--fd-bg', bg || getComputedStyle(document.body).backgroundColor);
+  H.classList.add(cls);
+  document.startViewTransition(fn).finished.finally(() => H.classList.remove(cls));
+}
 // A big number typed on keys (owner 2026-11-11, hero-pop-lab.html "Typing: Smooth" + "Opening: Grow"): only one marked
 // data-ht="<what's typed>", never a total. Each key redraws its sheet, so heroSnap reads the number on screen first and
 // heroPlay carries the new one on from it: the rest glide to their place, a new character grows from its foot, a gone one

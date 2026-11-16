@@ -36,7 +36,8 @@ function renderChatHistory() {
     : !list.length ? noResults(chtQuery.trim())
     : list.map(c => `<button type="button" class="row" data-cht-open="${escapeHtml(c.id)}"><div class="nm"><span>${escapeHtml(c.title)}</span></div></button>`).join('');
 }
-const chtHistory = (on) => {
+const chtHistory = (on) => fadeSwap('fd-chat', () => chtHistoryNow(on), $('.view-chat'));   // in and out with the single fade
+const chtHistoryNow = (on) => {
   $('.view-chat').classList.toggle('cht-hist-on', on);
   if (on) { chtQuery = $('#chtSearch').value = ''; $('#chtFind').classList.remove('typed'); renderChatHistory(); }
 };

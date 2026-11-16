@@ -1205,7 +1205,16 @@ function openEditSheet(kind, id, via) {
   }
   Object.assign(es, { f: null, anim: false, opened: true, ok: discSnap() });   // ok: what a manager's "no" puts back (discountOk)
   drawEditSheet();
-  if (!was) { $('#editSheet').classList.add('open'); esLine($('#editSheet')); }
+  if (!was) {
+    // Dine-in's and Discount's quick picks fade in on the phone (owner 2026-11-16): the ground over the cart page, the contents
+    // just behind it; only as it opens (es-opening), as every tap inside redraws them. The rest slide over (styles.css "Motion")
+    const sh = $('#editSheet'), fade = kind === 'ful' || kind === 'rd';
+    if (sh.classList.contains('es-fade') !== fade) {   // into its own shut state first, at once: else it opened from the other's (no fade, or no slide)
+      sh.style.transition = 'none'; sh.classList.toggle('es-fade', fade); void sh.offsetWidth; sh.style.transition = '';
+    }
+    if (fade) { sh.classList.add('es-opening'); clearTimeout(openEditSheet.t); openEditSheet.t = setTimeout(() => sh.classList.remove('es-opening'), 320); }
+    sh.classList.add('open'); esLine(sh);
+  }
 }
 
 // The one way a cart line leaves: the editor's Remove item and the swiped line's Delete (owner 2026-10-08).

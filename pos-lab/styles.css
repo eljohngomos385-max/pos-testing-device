@@ -311,7 +311,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   box-shadow: inset 0 0 0 1px var(--rl-hair);    /* and a hairline, softer than its cards' */
   transition: background .12s, color .12s;
 }
-.view-hamburger:hover { background: var(--surface-hover); color: var(--ink); }
+@media (hover: hover) { .view-hamburger:hover { background: var(--surface-hover); color: var(--ink); } }
 .view-head h1 {
   font-size: 20px;
   font-weight: 590;
@@ -406,7 +406,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   justify-content: center;
 }
 .search-clear.visible { display: flex; }
-.search-clear:hover { background: var(--line-strong); color: var(--ink); }
+@media (hover: hover) { .search-clear:hover { background: var(--line-strong); color: var(--ink); } }
 
 .ghost-icon {
   width: var(--bar-h); height: var(--bar-h);
@@ -418,9 +418,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
   transition: background .12s, color .12s;
 }
-.ghost-icon:hover { background: var(--surface-hover); color: var(--ink); }
+@media (hover: hover) { .ghost-icon:hover { background: var(--surface-hover); color: var(--ink); } }
 .search-row .ghost-icon { background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); }   /* like .view-hamburger */
-.search-row .ghost-icon:hover { background: var(--surface-hover); }
+@media (hover: hover) { .search-row .ghost-icon:hover { background: var(--surface-hover); } }
 /* Sell's ☰ bare like rednote's back chevron (owner 2026-10-09): no box, bigger glyph ~18px in from the screen like rednote's; search takes the room */
 .search-row #sidebarToggle, body.light-theme .search-row #sidebarToggle { width: 32px; margin-left: 2px; background: none; box-shadow: none; color: var(--ink); }
 #sidebarToggle svg { width: 24px; height: 24px; }
@@ -482,7 +482,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   position: relative;
   overflow: hidden;
 }
-.product-card:hover { background: var(--surface-hover); }
+@media (hover: hover) { .product-card:hover { background: var(--surface-hover); } }
 .product-card:active { transform: scale(0.985); }
 
 .pc-name {
@@ -510,7 +510,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 /* ---- Group parent tile (drill-in) — identical color to product tiles,
         only the folder badge in the corner signals it's a group. ---- */
 .product-card.pc-group { background: var(--tile); }
-.product-card.pc-group:hover { background: var(--surface-hover); }
+@media (hover: hover) { .product-card.pc-group:hover { background: var(--surface-hover); } }
 .pc-group .pc-name { color: rgba(255,255,255,0.92); }
 
 .no-results {
@@ -537,12 +537,12 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .cart .cart-title { color: var(--ink); }
 .cart .cart-sub { color: var(--ink-tertiary); }
 .cart .text-btn { color: var(--ink-tertiary); }
-.cart .text-btn:hover { background: rgba(255,255,255,0.05); color: var(--ink-secondary); }
+@media (hover: hover) { .cart .text-btn:hover { background: rgba(255,255,255,0.05); color: var(--ink-secondary); } }
 .cart .customer-btn { color: var(--ink-secondary); border: none; background: transparent; }
-.cart .customer-btn:hover { background: var(--surface); }
+@media (hover: hover) { .cart .customer-btn:hover { background: var(--surface); } }
 .cart .customer-btn .chev { color: var(--ink-quaternary); }
 .cart .cart-item { color: var(--ink); }
-.cart .cart-item:hover { background: var(--bg-soft); }
+@media (hover: hover) { .cart .cart-item:hover { background: var(--bg-soft); } }
 .cart .cart-item + .cart-item { border-top: 1px solid var(--line); }
 .cart .cart-empty { color: var(--ink-tertiary); }
 .cart .row { color: var(--ink-secondary); }
@@ -550,12 +550,12 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .cart .vat-row { color: var(--ink-tertiary); }
 .cart .cart-foot { border-top-color: transparent; }
 .cart .cart-fulfilment-row .fulfil-pill { background: var(--surface); border-color: transparent; color: var(--ink-secondary); border-radius: 10px; }
-.cart .cart-fulfilment-row .fulfil-pill:hover { background: var(--bg-soft); color: var(--ink); border-color: transparent; }
+@media (hover: hover) { .cart .cart-fulfilment-row .fulfil-pill:hover { background: var(--bg-soft); color: var(--ink); border-color: transparent; } }
 .cart .cart-fulfilment-row .fulfil-pill.active { background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%); border-color: #fff; color: #121212; font-weight: 700; box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.10); }
 .cart .cart-discount-btn { background: var(--surface); border-color: transparent; color: var(--ink-secondary); border-radius: 10px; }
-.cart .cart-discount-btn:hover { background: var(--bg-soft); color: var(--ink); border-color: transparent; }
+@media (hover: hover) { .cart .cart-discount-btn:hover { background: var(--bg-soft); color: var(--ink); border-color: transparent; } }
 .cart .cart-actions .charge-btn { background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%); color: #121212; font-weight: 700; border-radius: 10px; height: 56px; font-size: 14px; letter-spacing: 0.8px; text-transform: uppercase; box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.10); }
-.cart .cart-actions .charge-btn:hover { background: #f0f0f0; }
+@media (hover: hover) { .cart .cart-actions .charge-btn:hover { background: #f0f0f0; } }
 .cart .cart-actions .charge-btn:disabled { opacity: 0.3; background: rgba(255,255,255,0.08); color: var(--ink-tertiary); box-shadow: none; }
 .cart-head {
   padding: 16px 20px 12px;
@@ -575,7 +575,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   color: var(--ink-tertiary);
   transition: color .12s, background .12s;
 }
-.text-btn:hover { background: rgba(255,255,255,0.05); color: var(--ink-secondary); }
+@media (hover: hover) { .text-btn:hover { background: rgba(255,255,255,0.05); color: var(--ink-secondary); } }
 
 .customer-btn {
   margin: 0 16px 12px;
@@ -596,7 +596,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
 .customer-btn svg:first-child { color: var(--ink-tertiary); flex-shrink: 0; }
 .customer-btn span:nth-of-type(1) { flex: 1; text-align: left; }
 .customer-btn .chev { color: var(--ink-tertiary); flex-shrink: 0; }
-.customer-btn:hover { background: var(--surface); }
+@media (hover: hover) { .customer-btn:hover { background: var(--surface); } }
 .customer-btn.has-customer { background: var(--surface); color: var(--ink); }
 .customer-btn.has-customer svg:first-child { color: var(--ink); }
 
@@ -638,7 +638,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   cursor: pointer;
   align-items: center;
 }
-.cart-item:hover { background: var(--bg-soft); }
+@media (hover: hover) { .cart-item:hover { background: var(--bg-soft); } }
 .cart-item:active { background: var(--surface); }
 .cart-item + .cart-item { border-top: 1px solid var(--line); }
 .ci-main { min-width: 0; }
@@ -656,8 +656,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transition: background .12s, color .12s;
 }
 .qty-btn svg { width: 12px; height: 12px; }
-.qty-btn:hover { background: rgba(255,255,255,0.10); color: var(--ink); }
-.qty-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .qty-btn:hover { background: rgba(255,255,255,0.10); color: var(--ink); } }
+@media (hover: hover) { .qty-btn.danger:hover { background: var(--danger-bg); color: var(--danger); } }
 .qty-val {
   min-width: 22px;
   text-align: center;
@@ -749,7 +749,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   transition: background .12s, transform .08s;
 }
 #payBtn { justify-content: space-between; }   /* Check out ... the total */
-.primary-btn:hover:not(:disabled) { background: var(--accent-hover); }
+@media (hover: hover) { .primary-btn:hover:not(:disabled) { background: var(--accent-hover); } }
 .primary-btn:active:not(:disabled) { transform: scale(0.99); background: var(--accent-pressed); }
 .primary-btn:disabled {
   background: var(--bg-soft);
@@ -780,7 +780,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   gap: 8px;
   transition: background .12s, color .12s;
 }
-.secondary-btn:hover { background: rgba(255,255,255,0.08); color: var(--ink); }
+@media (hover: hover) { .secondary-btn:hover { background: rgba(255,255,255,0.08); color: var(--ink); } }
 .secondary-btn.small {
   height: 32px;
   padding: 0 12px;
@@ -790,9 +790,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border: 1px solid var(--line);
   color: var(--ink-secondary);
 }
-.secondary-btn.small:hover { background: var(--bg-soft); color: var(--ink); border-color: var(--line-strong); }
+@media (hover: hover) { .secondary-btn.small:hover { background: var(--bg-soft); color: var(--ink); border-color: var(--line-strong); } }
 .secondary-btn.small.danger { color: var(--danger); }
-.secondary-btn.small.danger:hover { background: var(--danger-bg); border-color: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .secondary-btn.small.danger:hover { background: var(--danger-bg); border-color: var(--danger-bg); color: var(--danger); } }
 
 /* ============================================================
    PAGE / INVENTORY TABS
@@ -892,7 +892,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: left;
   transition: background .12s, color .12s;
 }
-.dropdown-item:hover { background: var(--bg-soft); color: var(--ink); }
+@media (hover: hover) { .dropdown-item:hover { background: var(--bg-soft); color: var(--ink); } }
 .dropdown-item .count {
   font-size: 11px;
   color: var(--ink-tertiary);
@@ -939,7 +939,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   cursor: pointer;
   transition: background .12s;
 }
-.data-table tbody tr:hover { background: var(--bg-soft); }
+@media (hover: hover) { .data-table tbody tr:hover { background: var(--bg-soft); } }
 .data-table tbody tr.selected { background: rgba(255,255,255,0.04); }
 .data-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -956,15 +956,15 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   opacity: 0;
   transition: opacity .12s;
 }
-.data-table tbody tr:hover .row-actions { opacity: 1; }
+@media (hover: hover) { .data-table tbody tr:hover .row-actions { opacity: 1; } }
 .row-actions button {
   width: 26px; height: 26px;
   border-radius: 6px;
   color: var(--ink-tertiary);
   display: grid; place-items: center;
 }
-.row-actions button:hover { background: rgba(255,255,255,0.08); color: var(--ink); }
-.row-actions button.danger:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .row-actions button:hover { background: rgba(255,255,255,0.08); color: var(--ink); } }
+@media (hover: hover) { .row-actions button.danger:hover { background: var(--danger-bg); color: var(--danger); } }
 
 .item-cell { display: flex; align-items: center; gap: 10px; }
 .item-glyph {
@@ -1030,7 +1030,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   position: relative;
   min-height: 96px;
 }
-.folder-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); }
+@media (hover: hover) { .folder-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); } }
 .folder-card .fc-icon {
   width: 28px; height: 28px;
   border-radius: 4px;
@@ -1059,15 +1059,15 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   opacity: 0;
   transition: opacity .12s;
 }
-.folder-card:hover .fc-menu { opacity: 1; }
+@media (hover: hover) { .folder-card:hover .fc-menu { opacity: 1; } }
 .folder-card .fc-menu button {
   width: 24px; height: 24px;
   border-radius: 6px;
   color: var(--ink-tertiary);
   display: grid; place-items: center;
 }
-.folder-card .fc-menu button:hover { background: rgba(255,255,255,0.08); color: var(--ink); }
-.folder-card .fc-menu button.danger:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .folder-card .fc-menu button:hover { background: rgba(255,255,255,0.08); color: var(--ink); } }
+@media (hover: hover) { .folder-card .fc-menu button.danger:hover { background: var(--danger-bg); color: var(--danger); } }
 
 .folder-card.add-card {
   background: transparent;
@@ -1081,11 +1081,9 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   font-size: 13px;
   font-weight: 510;
 }
-.folder-card.add-card:hover {
-  border-color: var(--ink-tertiary);
+@media (hover: hover) { .folder-card.add-card:hover { border-color: var(--ink-tertiary);
   color: var(--ink);
-  background: var(--surface-hover);
-}
+  background: var(--surface-hover); } }
 
 /* ============================================================
    CUSTOMERS / REPORTS
@@ -1105,7 +1103,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   gap: 14px;
   transition: border-color .12s, box-shadow .12s;
 }
-.cust-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); }
+@media (hover: hover) { .cust-card:hover { border-color: var(--line-strong); box-shadow: var(--shadow-card); } }
 .cust-card-head { display: flex; align-items: center; gap: 12px; }
 .cust-card-avatar {
   width: 36px; height: 36px;
@@ -1346,7 +1344,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   background: var(--danger, #d92d20);
   color: #fff;
 }
-.primary-btn.danger:hover:not(:disabled) { background: var(--danger-hover, #b42318); }
+@media (hover: hover) { .primary-btn.danger:hover:not(:disabled) { background: var(--danger-hover, #b42318); } }
 .primary-btn.danger:active:not(:disabled) { background: var(--danger-pressed, #912018); }
 
 .modal-head {
@@ -1369,7 +1367,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border: none;
   color: var(--ink-tertiary);
 }
-.close-x:hover { background: var(--bg-soft); color: var(--ink); border: none; }
+@media (hover: hover) { .close-x:hover { background: var(--bg-soft); color: var(--ink); border: none; } }
 .modal-body { padding: 6px 20px 20px; overflow-y: auto; }
 
 .delivery-pin-row {
@@ -1560,7 +1558,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   text-align: left;
   transition: background .12s;
 }
-.customer-row-btn:hover { background: var(--bg-soft); }
+@media (hover: hover) { .customer-row-btn:hover { background: var(--bg-soft); } }
 .cust-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
@@ -1582,10 +1580,8 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; marg
   border: 1px dashed var(--line-strong);
   color: var(--ink-secondary);
 }
-.add-customer-row:hover .cust-avatar.add {
-  border-color: var(--ink-tertiary);
-  color: var(--ink);
-}
+@media (hover: hover) { .add-customer-row:hover .cust-avatar.add { border-color: var(--ink-tertiary);
+  color: var(--ink); } }
 .cust-balance { font-size: 12px; font-weight: 590; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
 .cust-balance.has { color: var(--warn); }
 
@@ -1718,7 +1714,7 @@ select.text-input {
   color: var(--ink-secondary);
   transition: background .12s, color .12s;
 }
-.quick-cash button:hover { background: rgba(255,255,255,0.08); color: var(--ink); }
+@media (hover: hover) { .quick-cash button:hover { background: rgba(255,255,255,0.08); color: var(--ink); } }
 
 .change-row {
   display: flex;
@@ -1860,7 +1856,7 @@ select.text-input {
   text-decoration: none;
   transition: background 0.15s;
 }
-.open-pos-link:hover { background: var(--surface-hover); }
+@media (hover: hover) { .open-pos-link:hover { background: var(--surface-hover); } }
 .open-pos-link .ext { margin-left: auto; color: var(--ink-tertiary); }
 
 /* Link in POS sidebar leading to back office */
@@ -1879,14 +1875,14 @@ select.text-input {
   text-decoration: none;
   transition: background 0.15s;
 }
-.open-bo-link:hover { background: var(--accent-hover); }
+@media (hover: hover) { .open-bo-link:hover { background: var(--accent-hover); } }
 .open-bo-link .ext { margin-left: auto; opacity: 0.7; }
 .open-settings-link,
 .open-settings-link:visited {
   background: var(--accent);
   color: var(--accent-ink);
 }
-.open-settings-link:hover { background: var(--accent-hover); color: var(--accent-ink); }
+@media (hover: hover) { .open-settings-link:hover { background: var(--accent-hover); color: var(--accent-ink); } }
 
 /* Segmented control (Today / 7d / 30d) */
 .seg {
@@ -1908,7 +1904,7 @@ select.text-input {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.seg-btn:hover { color: var(--ink); }
+@media (hover: hover) { .seg-btn:hover { color: var(--ink); } }
 .seg-btn.active {
   background: var(--surface);
   color: var(--ink);
@@ -1997,7 +1993,7 @@ select.text-input {
   font-weight: 500;
   cursor: pointer;
 }
-.link-btn:hover { color: var(--accent); text-decoration: underline; }
+@media (hover: hover) { .link-btn:hover { color: var(--accent); text-decoration: underline; } }
 
 /* Sales bar chart */
 .chart-wrap {
@@ -2024,7 +2020,7 @@ select.text-input {
   transition: opacity 0.15s;
   min-height: 2px;
 }
-.chart-bar:hover .chart-bar-fill { opacity: 0.75; }
+@media (hover: hover) { .chart-bar:hover .chart-bar-fill { opacity: 0.75; } }
 .chart-bar-label {
   font-size: 10px;
   color: var(--ink-tertiary);
@@ -2195,7 +2191,7 @@ select.text-input {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
   transition: background .12s, border-color .12s;
 }
-.prn-item:hover { background: var(--surface-hover); border-color: var(--line-strong); }
+@media (hover: hover) { .prn-item:hover { background: var(--surface-hover); border-color: var(--line-strong); } }
 .prn-item.connected { border-color: var(--ok); }
 .prn-item-name {
   font-size: 13px;
@@ -2294,7 +2290,7 @@ a.secondary-btn { text-decoration: none; }
   transition: background .12s, border-color .12s;
   white-space: nowrap;
 }
-.folder-dd.inline:hover { background: var(--surface-hover); border-color: var(--line-strong); }
+@media (hover: hover) { .folder-dd.inline:hover { background: var(--surface-hover); border-color: var(--line-strong); } }
 .folder-dd.inline .chev { color: var(--ink-tertiary); }
 
 .icon-btn { position: relative; }
@@ -2333,7 +2329,7 @@ a.secondary-btn { text-decoration: none; }
   color: var(--ink-secondary);
   text-align: left;
 }
-.folder-dd-menu .ddm-item:hover { background: rgba(255,255,255,0.06); color: var(--ink); }
+@media (hover: hover) { .folder-dd-menu .ddm-item:hover { background: rgba(255,255,255,0.06); color: var(--ink); } }
 .folder-dd-menu .ddm-item.active { color: var(--ink); background: rgba(255,255,255,0.08); }
 .folder-dd-menu .ddm-item .count {
   font-size: 11px;
@@ -2396,7 +2392,7 @@ a.secondary-btn { text-decoration: none; }
   color: var(--accent);
   background: transparent;
 }
-.bb-view-btn:hover { background: var(--accent-tint); }
+@media (hover: hover) { .bb-view-btn:hover { background: var(--accent-tint); } }
 .bb-collapse-handle {
   width: 80px; height: 4px;
   background: rgba(255,255,255,0.20);
@@ -2414,7 +2410,7 @@ a.secondary-btn { text-decoration: none; }
   background: transparent;
   transition: background .12s, color .12s, opacity .12s;
 }
-.bb-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--ink); }
+@media (hover: hover) { .bb-arrow:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--ink); } }
 .bb-arrow:disabled { opacity: 0.3; cursor: not-allowed; }
 .bb-left { gap: 8px; }
 .bb-left .bb-page {
@@ -2442,7 +2438,7 @@ a.secondary-btn { text-decoration: none; }
   border-radius: 6px;
   transition: background .12s, color .12s;
 }
-.bb-size-btn:hover { color: var(--ink); }
+@media (hover: hover) { .bb-size-btn:hover { color: var(--ink); } }
 .bb-size-btn.active {
   background: var(--accent);
   color: #fff;
@@ -2461,7 +2457,7 @@ a.secondary-btn { text-decoration: none; }
   text-decoration: none;
   transition: background .12s, color .12s;
 }
-.bb-settings-link:hover { background: rgba(255,255,255,0.06); color: var(--ink); }
+@media (hover: hover) { .bb-settings-link:hover { background: rgba(255,255,255,0.06); color: var(--ink); } }
 
 /* The bottom bar splits with the ticket — only show under catalog */
 .main { position: relative; }
@@ -2494,13 +2490,13 @@ a.secondary-btn { text-decoration: none; }
   position: relative;
   transition: background .12s;
 }
-.cart-actions .save-btn:hover { background: var(--accent-hover); }
-.cart-actions .charge-btn:hover { background: var(--accent-hover); }
+@media (hover: hover) { .cart-actions .save-btn:hover { background: var(--accent-hover); } }
+@media (hover: hover) { .cart-actions .charge-btn:hover { background: var(--accent-hover); } }
 .cart-actions .save-btn {
   background: var(--surface-hover);
   color: var(--ink);
 }
-.cart-actions .save-btn:hover { background: var(--surface); }
+@media (hover: hover) { .cart-actions .save-btn:hover { background: var(--surface); } }
 .cart-actions .save-btn:disabled,
 .cart-actions .charge-btn:disabled {
   background: rgba(255,255,255,0.06);
@@ -2537,12 +2533,9 @@ a.secondary-btn { text-decoration: none; }
   transition: background .12s, color .12s;
   white-space: nowrap;
 }
-.fulfil-pill:hover,
-.cart-discount-btn:hover {
-  background: var(--bg-soft);
+@media (hover: hover) { .fulfil-pill:hover, .cart-discount-btn:hover { background: var(--bg-soft);
   color: var(--ink);
-  border-color: transparent;
-}
+  border-color: transparent; } }
 .fulfil-pill.active {
   background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%);
   border-color: #fff;
@@ -2550,11 +2543,9 @@ a.secondary-btn { text-decoration: none; }
   font-weight: 700;
   box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.10);
 }
-.fulfil-pill.active:hover {
-  background: #fff;
+@media (hover: hover) { .fulfil-pill.active:hover { background: #fff;
   border-color: #fff;
-  color: #121212;
-}
+  color: #121212; } }
 .cart-discount-btn.active {
   background: linear-gradient(180deg, #ffffff 0%, #e6e6e6 100%);
   border-color: #fff;
@@ -2562,11 +2553,9 @@ a.secondary-btn { text-decoration: none; }
   font-weight: 700;
   box-shadow: inset 0 1px 0 rgba(255,255,255,1), inset 0 -2px 4px rgba(0,0,0,0.10);
 }
-.cart-discount-btn.active:hover {
-  background: #fff;
+@media (hover: hover) { .cart-discount-btn.active:hover { background: #fff;
   border-color: #fff;
-  color: #121212;
-}
+  color: #121212; } }
 .fulfil-pill svg,
 .cart-discount-btn svg {
   width: 15px;
@@ -2602,7 +2591,7 @@ a.secondary-btn { text-decoration: none; }
   position: relative;
   transition: background .12s, color .12s;
 }
-.side-foot-row:hover { background: var(--surface-hover); color: var(--ink); }
+@media (hover: hover) { .side-foot-row:hover { background: var(--surface-hover); color: var(--ink); } }
 .side-foot-row svg { flex-shrink: 0; }
 .side-foot-dot {
   width: 6px;
@@ -2694,7 +2683,7 @@ a.secondary-btn { text-decoration: none; }
   border: none;
   cursor: pointer;
 }
-.order-row:hover { background: var(--surface); }
+@media (hover: hover) { .order-row:hover { background: var(--surface); } }
 .order-row.active {
   background: var(--surface-hover);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
@@ -2716,12 +2705,10 @@ a.secondary-btn { text-decoration: none; }
   border-radius: 10px;
   color: var(--ink-secondary);
 }
-.order-ops .secondary-btn:hover {
-  background: var(--surface-hover);
-  color: var(--ink);
-}
+@media (hover: hover) { .order-ops .secondary-btn:hover { background: var(--surface-hover);
+  color: var(--ink); } }
 .order-ops .secondary-btn.danger { color: var(--danger); }
-.order-ops .secondary-btn.danger:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .order-ops .secondary-btn.danger:hover { background: var(--danger-bg); color: var(--danger); } }
 .cust-pay-btn {
   width: 100%;
   margin-top: 10px;
@@ -2744,10 +2731,8 @@ a.secondary-btn { text-decoration: none; }
   transition: background .12s, color .12s;
   flex-shrink: 0;
 }
-.or-receipt-btn:hover {
-  background: var(--surface-hover);
-  color: var(--ink);
-}
+@media (hover: hover) { .or-receipt-btn:hover { background: var(--surface-hover);
+  color: var(--ink); } }
 .or-head {
   display: flex;
   justify-content: space-between;
@@ -2846,7 +2831,7 @@ a.secondary-btn { text-decoration: none; }
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
   transition: background .12s;
 }
-.od-details-btn:hover { background: var(--surface-hover); }
+@media (hover: hover) { .od-details-btn:hover { background: var(--surface-hover); } }
 .order-detail-empty {
   margin: auto;
   display: flex;
@@ -2922,7 +2907,7 @@ a.secondary-btn { text-decoration: none; }
   user-select: none;
   margin-top: 8px;
 }
-.odm-items-toggle:hover { color: var(--ink-secondary); }
+@media (hover: hover) { .odm-items-toggle:hover { color: var(--ink-secondary); } }
 .odm-items-chev {
   color: var(--ink-quaternary);
   transition: transform 0.22s ease;
@@ -3027,9 +3012,9 @@ a.secondary-btn { text-decoration: none; }
   font-size: 13px;
   font-weight: 590;
 }
-.odm-actions .secondary-btn:hover { background: var(--surface-hover); color: var(--ink); border-color: var(--line-strong); }
+@media (hover: hover) { .odm-actions .secondary-btn:hover { background: var(--surface-hover); color: var(--ink); border-color: var(--line-strong); } }
 .odm-actions .secondary-btn.danger { color: var(--danger); }
-.odm-actions .secondary-btn.danger:hover { background: var(--danger-bg); border-color: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .odm-actions .secondary-btn.danger:hover { background: var(--danger-bg); border-color: var(--danger-bg); color: var(--danger); } }
 
 /* Delivery trip — order-details modal. Buttons reuse .odm-actions. */
 .odm-delivery {
@@ -3072,7 +3057,7 @@ a.secondary-btn { text-decoration: none; }
   font-size: 13px;
   text-align: left;
 }
-.ls-match:hover { background: var(--surface-hover); }
+@media (hover: hover) { .ls-match:hover { background: var(--surface-hover); } }
 .ls-match span:last-child,
 .ls-picked { color: var(--ink-tertiary); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .od-head {
@@ -3383,7 +3368,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet button:where(:not(.ph-bar, .fab)) { font: inherit; color: inherit; border: 0; background: none; padding: 0; cursor: pointer; }
 .esheet svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .esheet .es-x { position: absolute; z-index: 1; top: 12px; left: 12px; display: grid; place-items: center; width: 40px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
-.esheet .es-x:hover { background: var(--es-btn); color: var(--ink); }
+@media (hover: hover) { .esheet .es-x:hover { background: var(--es-btn); color: var(--ink); } }
 .esheet .es-x :is(.ib, .xl) { display: none; }   /* the phone's ‹ Back */
 @media (min-width: 721px) {   /* the tablet's too: checkout's ‹ Cancel, word and all (owner 2026-10-16) */
   .esheet:not(.cust-sheet) .es-x { top: var(--es-top); left: 8px; display: inline-flex; gap: 4px; width: auto; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
@@ -3425,7 +3410,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .esheet .es-row .cv { flex: none; width: 22px; height: 22px; margin: 0 -6px 0 -9px; stroke-width: 1.72; color: color-mix(in srgb, var(--ink-tertiary) 50%, var(--ink-quaternary)); }   /* the ›: halfway between the old darker one and Settings' faint one, the value tucked in next to it (owner 2026-11-06) */
 .esheet .es-stp { display: grid; place-items: center; width: 32px; height: 40px; border-radius: var(--es-r); color: var(--ink-secondary); }
 .esheet .es-row > [data-sf="q"] { margin: 0 -8px; }   /* − n + tight, the number right between them (owner 2026-11-06 page 9) */
-.esheet .es-stp:hover:not(:disabled) { background: var(--es-btn); color: var(--ink); }
+@media (hover: hover) { .esheet .es-stp:hover:not(:disabled) { background: var(--es-btn); color: var(--ink); } }
 .esheet .es-stp:disabled { color: var(--ink-quaternary); cursor: default; }   /* off: dimmed, never see-through (owner 2026-11-15) */
 /* the number being typed: a fixed slot so nothing beside it moves, a caret, grey until the first key replaces it */
 .es-n { display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -3445,7 +3430,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-kp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esheet .es-kp button { height: 56px; border-radius: var(--es-r); background: var(--tile); font-size: 22px; font-weight: 500; font-variant-numeric: tabular-nums;
                         transition: background-color .1s, transform .1s; }
-.esheet .es-kp button:hover { background: var(--es-hover); }
+@media (hover: hover) { .esheet .es-kp button:hover { background: var(--es-hover); } }
 .esheet .es-kp button:active { transform: scale(.97); }
 .esheet .es-kp svg { width: 22px; height: 22px; stroke-width: 1.6; }
 /* Pickup's time and Delivery's address take the keys' place, same width, so the same glide */
@@ -3454,7 +3439,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .es-ah .es-seg { margin: 0; }
 .esheet .es-ah .es-seg button { height: 28px; padding: 0 12px; }
 .esheet .es-chip { display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 13px; font-weight: 500; }
-.esheet .es-chip:hover { background: var(--es-btn); color: var(--ink); }
+@media (hover: hover) { .esheet .es-chip:hover { background: var(--es-btn); color: var(--ink); } }
 .es-ta { display: block; width: 100%; padding: 12px 16px; border: 0; border-radius: var(--row-r, var(--es-r)); outline: 0; background: var(--row-bg, var(--tile)); color: var(--ink);
          font: inherit; font-size: 15px; line-height: 1.45; resize: none; flex: none; }   /* flex: none -- the tablet's panel is 0 tall, and shrinking squashed the box to one line */
 .es-ta:focus { background: var(--rl-card); box-shadow: inset 0 0 0 1.5px var(--es-sel); }
@@ -3481,13 +3466,13 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* the foot: a quiet one left, Done / Apply right */
 .es-ft { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; border-top: 1px solid var(--line); }
 .esheet .es-q { height: 40px; margin-left: -8px; padding: 0 8px; border-radius: var(--es-r); color: var(--ink-secondary); font-size: 14px; }
-.esheet .es-q:hover { background: var(--es-btn); color: var(--ink); }
+@media (hover: hover) { .esheet .es-q:hover { background: var(--es-btn); color: var(--ink); } }
 .esheet :is(.es-q, .es-x).rm { color: var(--danger); }   /* Remove item; the phone's Remove across from ‹ */
 .esheet .es-x.es-clr.rm { width: 44px; padding: 0; }   /* the phone's Remove: the bin in ‹ Back's round button (owner 2026-11-08) */
 .esheet .es-x.rm svg { color: var(--danger); }   /* the glass circle's ink is black; the bin stays red */
-.esheet .es-q.rm:hover { background: var(--danger-bg); }
+@media (hover: hover) { .esheet .es-q.rm:hover { background: var(--danger-bg); } }
 .esheet .es-ink { height: 40px; margin-left: auto; padding: 0 20px; border-radius: var(--es-r); background: var(--tile); font-size: 14px; font-weight: 590; }
-.esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); }
+@media (hover: hover) { .esheet .es-ink:hover:not(:disabled) { background: var(--es-hover); } }
 .esheet .es-ink:disabled { opacity: .35; cursor: default; }   /* the price ask's Add, till a price is typed */
 .esheet .es-ink + .es-ink { margin-left: 0; }   /* a pair (Cash out | Cash in) stays together on the right */
 /* the list glides aside as the keys come in, and back when they go (170 = half of keys 300 + gap 40). es-in / es-out,
@@ -3534,7 +3519,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   :is(.esheet .es-keys, .co-keyin > *) > .es-seg { margin: 0; }
   :is(.esheet .es-keys, .co-keyin > *) > .es-seg.off { display: none; }
   :is(.esheet .es-keys, .co-keyin > *) > .es-kp { width: 100%; gap: 8px; }
-  :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > :is(button, button:hover) { height: 58px; border-radius: 14px; background: var(--pk-key); box-shadow: none; font-size: 26px; }   /* .co: over checkout's own key ring */
+  @media (hover: hover) { :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > :is(button, button:hover) { height: 58px; border-radius: 14px; background: var(--pk-key); box-shadow: none; font-size: 26px; } }   /* .co: over checkout's own key ring */
   :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > :is(button, button:hover):is([data-sk="."], [data-sk="del"]) { background: transparent; }
   :is(.esheet .es-keys, .co .co-keyin > :has(> .es-kp)) > .es-kp > button:active { background: color-mix(in srgb, var(--pk-key), var(--ink) 10%); }
   :is(.esheet .es-keys, .co-keyin > *) > .es-kp svg { width: 26px; height: 26px; stroke-width: 1.7; }
@@ -3572,7 +3557,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 /* the title small and centred in the top bar, between ✕ / ‹ and Save (the item editor's .fm-h) */
 .cust-sheet .es-ft { position: absolute; z-index: 1; top: 12px; right: 12px; padding: 0; border: 0; }   /* Save at the top, across from ✕ / ‹ (the item editor's) */
 .cust-sheet .es-ink { height: 40px; padding: 0 10px; background: none; font-size: 15px; font-weight: 550; }   /* bare words */
-.cust-sheet .es-ink:hover { background: var(--es-btn); }
+@media (hover: hover) { .cust-sheet .es-ink:hover { background: var(--es-btn); } }
 .cs-h { position: absolute; z-index: 1; top: 12px; inset-inline: 0; margin: 0; padding-inline: 80px; pointer-events: none; color: var(--ink);
         font-size: 16px; font-weight: 550; line-height: 40px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #custFields { display: flex; flex-direction: column; gap: 12px; }
@@ -3620,7 +3605,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   color: var(--ink-secondary);
   transition: background .12s, color .12s;
 }
-.vq-btn:hover { background: var(--surface-hover); color: var(--ink); }
+@media (hover: hover) { .vq-btn:hover { background: var(--surface-hover); color: var(--ink); } }
 .vq-input {
   height: 48px;
   background: transparent;
@@ -3653,7 +3638,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   align-items: center;
   gap: 6px;
 }
-.cim-remove:hover { background: var(--danger-bg); }
+@media (hover: hover) { .cim-remove:hover { background: var(--danger-bg); } }
 
 /* Delivery address line inside order detail */
 .od-deliver {
@@ -3689,7 +3674,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-top { display: flex; align-items: center; padding: var(--co-y) var(--co-m) 0 calc(var(--co-m) - 14px); }
 .co-cancel { display: inline-flex; align-items: center; gap: 4px; min-width: 92px; height: 44px; padding: 0 12px 0 8px; border-radius: var(--r-input);
              color: var(--ink); font-size: 15px; font-weight: 560; transition: background-color .12s, opacity .25s; }
-.co-cancel:hover { background: var(--surface-hover); }
+@media (hover: hover) { .co-cancel:hover { background: var(--surface-hover); } }
 .co-cancel .co-ic { width: 18px; height: 18px; stroke-width: 2; color: var(--ink-secondary); }
 .is-done .co-cancel { opacity: 0; pointer-events: none; }
 .co-stage { overflow: auto; padding: 0 var(--co-m) 56px; }
@@ -3725,7 +3710,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 112px; padding: 0 10px;
            border-radius: 14px; background: var(--tile); color: var(--ink); font-size: 15px; font-weight: 560; text-align: center;
            transition: background-color .12s, transform .1s; }
-.co-tile:hover { background: var(--surface-hover); }
+@media (hover: hover) { .co-tile:hover { background: var(--surface-hover); } }
 .co-tile:active { transform: scale(.98); }
 .co-tile .co-ic { width: 26px; height: 26px; stroke-width: 1.5; color: var(--ink-secondary); }
 .co-ic.flat { fill: currentColor; stroke: none; color: var(--side-ic, var(--ink-secondary)); }   /* a flat glyph in the menu's own grey, each theme's (owner 2026-11-16): one solid shape, details cut out */
@@ -3789,7 +3774,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 @keyframes co-blink { 50% { opacity: 0; } }
 .co .es-kp button { height: 64px; border-radius: 14px; background: var(--tile); color: var(--ink); font-size: 24px; font-weight: 500;
                     font-variant-numeric: tabular-nums; transition: background-color .1s, transform .1s; }
-.co .es-kp button:hover { background: var(--surface-hover); }
+@media (hover: hover) { .co .es-kp button:hover { background: var(--surface-hover); } }
 .co .es-kp button:active { transform: scale(.97); }
 .co .es-kp svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 /* the ref / Other-name box = Senior's box (.es-ta: no line, the row's corner and fill, owner 2026-11-06 pages 19-23) */
@@ -3804,9 +3789,9 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 56px; padding: 0 22px;
           border: 1px solid var(--line-strong); border-radius: var(--r-input); background: var(--surface-2); color: var(--ink);
           font-size: 15px; font-weight: 550; white-space: nowrap; transition: background-color .12s, opacity .2s; }
-.co-btn:hover { background: var(--surface-hover); }
+@media (hover: hover) { .co-btn:hover { background: var(--surface-hover); } }
 .co-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); box-shadow: var(--lt-primary-shadow, none); }
-.co-btn.primary:hover { background: var(--accent-hover); }
+@media (hover: hover) { .co-btn.primary:hover { background: var(--accent-hover); } }
 .co-btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
 .co-btn.wait { opacity: .35; cursor: default; }   /* Must fill in, box empty: looks off, a tap says what's missing (app.js) */
 .co-step > .co-btn { height: 50px; margin-top: 6px; }
@@ -3815,7 +3800,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-items { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; border-left: 1px solid var(--line); }
 .co-cust { display: flex; align-items: center; gap: 10px; height: var(--co-cust-h); padding: 0 var(--co-m); border-bottom: 1px solid var(--line);
            font-size: 14px; font-weight: 560; text-align: left; transition: background-color .12s; }
-.co-cust:hover { background: var(--surface-hover); }
+@media (hover: hover) { .co-cust:hover { background: var(--surface-hover); } }
 .co-cust span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .co-cust .co-ic { width: 18px; height: 18px; color: var(--ink-secondary); }
 .co-cust .co-chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
@@ -3919,7 +3904,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
   border-radius: 4px;
   cursor: pointer;
 }
-.role-switch:hover { color: var(--ink); background: var(--surface-2); }
+@media (hover: hover) { .role-switch:hover { color: var(--ink); background: var(--surface-2); } }
 
 /* Responsive */
 @media (max-width: 1100px) {
@@ -4864,24 +4849,25 @@ body.light-theme :is(.co-tile, .co-ref:not(:focus)) { background: var(--row-bg, 
    a picked / typed-into row keeps its own look */
 body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick), .es-ink) { background: var(--row-bg, var(--surface)); box-shadow: var(--row-lift, inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06)); }
 @media (hover: hover) { body.light-theme .esheet:not(.cust-sheet):not(:has(.es-kp:not(.lk *), .es-body.ks:not(.lk))) :is(.es-row:not(.on, .pick, .out), .es-ink:not(:disabled)):hover { background: var(--bg-soft); } }
-body.light-theme .product-card:hover,
-body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); }
+@media (hover: hover) { body.light-theme .product-card:hover, body.light-theme .product-card.pc-group:hover { background: var(--surface-hover); } }
 body.light-theme .product-card:active { background: var(--surface-hover); }
 /* owner 2026-10-18: tiles were "the boring part", but ring + lit edge + drop (v447) was "too much attention"; a
    hairline only, drawn inset so the grid's overflow can't clip it */
 .product-card { box-shadow: inset 0 0 0 .5px rgb(255 255 255 / .08), 0 1px 2px -1px rgb(0 0 0 / .3); }
 .product-card, .product-card.pc-group { background: var(--surface-2); }   /* owner 2026-10-18: dark tiles nearer the search glass (#121212); --tile stays for the sheets */
 body.light-theme :is(.product-card, .co-tile) { box-shadow: var(--row-lift, inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06)); }   /* owner: --rl-shadow read "a bit strong" on white */   /* white on the grey page: a touch of drop so it lifts (v448 ring alone read flat) */
-body.light-theme .co-tile:hover { background: var(--bg-soft); }
+@media (hover: hover) { body.light-theme .co-tile:hover { background: var(--bg-soft); } }
 body.light-theme .co-tile:active { background: var(--bg-softer); }
 body.light-theme .co .es-kp button { background: var(--surface); box-shadow: inset 0 0 0 .5px rgb(0 0 0 / .05), 0 1px 2px -1px rgb(0 0 0 / .06); }   /* the keys too: --tile is the grey page's own colour (audit 2026-10-19) */
-body.light-theme .co .es-kp button:hover { background: var(--bg-soft); }
+@media (hover: hover) { body.light-theme .co .es-kp button:hover { background: var(--bg-soft); } }
 body.light-theme .pc-name,
 body.light-theme .pc-group .pc-name { color: var(--ink); }
 /* A tile colour (item editor) when no photo shows; the same hue on the Items thumb and the cart's square */
-.product-card.pc-tc, .product-card.pc-tc:hover { background: hsl(var(--tc) 45% 32%); }
-body.light-theme .product-card.pc-tc, body.light-theme .product-card.pc-tc:hover { background: hsl(var(--tc) 75% 86%); }
-.product-card.pc-tc:hover { filter: brightness(1.08); }
+.product-card.pc-tc { background: hsl(var(--tc) 45% 32%); }
+@media (hover: hover) { .product-card.pc-tc:hover { background: hsl(var(--tc) 45% 32%); } }
+body.light-theme .product-card.pc-tc { background: hsl(var(--tc) 75% 86%); }
+@media (hover: hover) { body.light-theme .product-card.pc-tc:hover { background: hsl(var(--tc) 75% 86%); } }
+@media (hover: hover) { .product-card.pc-tc:hover { filter: brightness(1.08); } }
 /* Settings › Tile pictures (tileArt): fill = the photo is the tile, its words on a shade at the bottom */
 .pc-img img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .product-grid[data-pics="fill"] .pc-img { position: absolute; inset: 0; }
@@ -4897,20 +4883,17 @@ body.light-theme :is(.rail-h .row, .co-row) .pic[style] { background: hsl(var(--
 :is(.rail-h .row, .co-row) .pic:has(img) { background: none; }   /* a see-through PNG shows no box in the cart */
 
 /* Active / primary = dark #303030 fill, white text (back office primary button) */
-body.light-theme .fulfil-pill.active,
-body.light-theme .fulfil-pill.active:hover,
-body.light-theme .cart-discount-btn.active,
-body.light-theme .cart-discount-btn.active:hover,
-body.light-theme .cart .cart-fulfilment-row .fulfil-pill.active,
-body.light-theme .cart .cart-actions .charge-btn {
-  background: var(--accent);
+body.light-theme .fulfil-pill.active, body.light-theme .cart-discount-btn.active, body.light-theme .cart .cart-fulfilment-row .fulfil-pill.active, body.light-theme .cart .cart-actions .charge-btn { background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-ink);
-  box-shadow: var(--lt-primary-shadow);
-}
+  box-shadow: var(--lt-primary-shadow); }
+@media (hover: hover) { body.light-theme .fulfil-pill.active:hover, body.light-theme .cart-discount-btn.active:hover { background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--lt-primary-shadow); } }
 body.light-theme .fulfil-pill.active svg,
 body.light-theme .cart-discount-btn.active svg { color: var(--accent-ink); }
-body.light-theme .cart .cart-actions .charge-btn:hover:not(:disabled) { background: var(--accent-hover); }
+@media (hover: hover) { body.light-theme .cart .cart-actions .charge-btn:hover:not(:disabled) { background: var(--accent-hover); } }
 body.light-theme .cart .cart-actions .charge-btn:disabled,
 body.light-theme .cart-actions .charge-btn:disabled {
   background: var(--bg-soft);
@@ -4919,25 +4902,10 @@ body.light-theme .cart-actions .charge-btn:disabled {
 }
 
 /* Hover/tint fills that were white-on-dark become black-on-light */
-body.light-theme .side-link:hover,
-body.light-theme .cart .text-btn:hover,
-body.light-theme .text-btn:hover,
-body.light-theme .or-status.done,
-body.light-theme .bb-page-pill,
-body.light-theme .bb-size-toggle,
-body.light-theme .order-state.done,
-body.light-theme .data-table tbody tr.selected { background: rgba(0,0,0,0.04); }
-body.light-theme .side-link.active,
-body.light-theme .qty-btn:hover,
-body.light-theme .secondary-btn:hover,
-body.light-theme .row-actions button:hover,
-body.light-theme .folder-card .fc-menu button:hover,
-body.light-theme .quick-cash button:hover,
-body.light-theme .folder-dd-menu .ddm-item:hover,
-body.light-theme .folder-dd-menu .ddm-item.active,
-body.light-theme .bb-arrow:hover:not(:disabled),
-body.light-theme .bb-settings-link:hover,
-body.light-theme .co-back-btn:hover { background: rgba(0,0,0,0.06); }
+body.light-theme .or-status.done, body.light-theme .bb-page-pill, body.light-theme .bb-size-toggle, body.light-theme .order-state.done, body.light-theme .data-table tbody tr.selected { background: rgba(0,0,0,0.04); }
+@media (hover: hover) { body.light-theme .side-link:hover, body.light-theme .cart .text-btn:hover, body.light-theme .text-btn:hover { background: rgba(0,0,0,0.04); } }
+body.light-theme .side-link.active, body.light-theme .folder-dd-menu .ddm-item.active { background: rgba(0,0,0,0.06); }
+@media (hover: hover) { body.light-theme .qty-btn:hover, body.light-theme .secondary-btn:hover, body.light-theme .row-actions button:hover, body.light-theme .folder-card .fc-menu button:hover, body.light-theme .quick-cash button:hover, body.light-theme .folder-dd-menu .ddm-item:hover, body.light-theme .bb-arrow:hover:not(:disabled), body.light-theme .bb-settings-link:hover, body.light-theme .co-back-btn:hover { background: rgba(0,0,0,0.06); } }
 body.light-theme .side-link.active,
 body.light-theme .side-link.active svg { color: var(--ink); }
 body.light-theme :where(#app:not(.bo-app)) .sidebar { background: var(--surface); }   /* rednote's #FAFAFA under the white cards */
@@ -7231,12 +7199,14 @@ body.light-theme {
                            font-size: 14px; font-weight: 560; transition: background-color .12s; }
 .rail-h .cust { border-top-left-radius: calc(var(--rl-r) - 1px); }
 .rail-h .pick { border-radius: 0 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px); }
-.rail-h .cust:hover, .rail-h .pick:hover, .rail-h .pick[aria-expanded="true"] { background: var(--rl-hover); }
+.rail-h .pick[aria-expanded="true"] { background: var(--rl-hover); }
+@media (hover: hover) { .rail-h .cust:hover, .rail-h .pick:hover { background: var(--rl-hover); } }
 .rail-h .cust span, .rail-h .pick span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail-h .chev { width: 16px; height: 16px; color: var(--ink-tertiary); }
 .rail-h .more { display: grid; place-items: center; flex: none; width: 52px; border: 0; border-left: 1px solid var(--line); border-top-right-radius: calc(var(--rl-r) - 1px);
               background: none; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
-.rail-h .more:hover, .rail-h .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+.rail-h .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { .rail-h .more:hover { background: var(--rl-hover); color: var(--ink); } }
 .rail-h .o-note { margin: 0; padding: 9px var(--rl-m); border-top: 1px solid var(--line); color: var(--ink-tertiary); font-size: 12px; line-height: 1.3; overflow-wrap: anywhere; }   /* the order's note (cart ⋯ Add note) */
 
 /* items */
@@ -7246,7 +7216,7 @@ body.light-theme {
 .rail-h .lines { grid-row: 2; overflow-y: auto; overscroll-behavior: contain; }   /* row 2 even with the band off, so it still scrolls */
 .rail-h .line + .line { border-top: 1px solid var(--line); }
 .rail-h .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: var(--row-h); padding: 5px var(--row-x); border: 0; background: none; text-align: left; transition: background-color .12s; }
-.rail-h .row:hover { background: var(--rl-hover); }
+@media (hover: hover) { .rail-h .row:hover { background: var(--rl-hover); } }
 /* a line swiped left (app.js, touch only): the row becomes a grey tile, its right edge rounded, and a round red Delete waits beside it, as iPhone's Calls (owner 2026-11-07) */
 .rail-h .line { position: relative; overflow: hidden; }
 .rail-h .line .row { position: relative; z-index: 1; touch-action: pan-y; transition: background-color .12s, border-radius .12s, transform .2s var(--rl-ease); }
@@ -7271,7 +7241,7 @@ body.light-theme {
 .rail-h .pay { display: flex; flex-direction: column; gap: var(--rl-gap); padding: 0 12px 12px; }
 .rail-h .d-row { display: flex; align-items: center; gap: 8px; height: 40px; margin: 0 -12px; padding: 0 14px 0 var(--rl-m); border: 0; border-bottom: 1px solid var(--line);
                border-radius: calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0 0; background: none; color: var(--ink-secondary); font-weight: 500; text-align: left; transition: background-color .12s; }
-.rail-h .d-row:hover { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { .rail-h .d-row:hover { background: var(--rl-hover); color: var(--ink); } }
 .rail-h .d-row span:first-child { flex: 1; }
 .rail-h .d-row.on { color: var(--rl-on); }
 .rail-h .d-row:disabled { color: var(--ink-quaternary); pointer-events: none; }
@@ -7289,7 +7259,7 @@ body.light-theme {
 .rail-h.empty-cart .sum .v { color: var(--ink-tertiary); }
 .rail-h .go { height: 52px; width: 100%; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 15px; font-weight: 550;
             box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 1px 0 rgba(0,0,0,.2); transition: background-color .12s, opacity .2s; }
-.rail-h .go:hover { background: var(--accent-hover); }
+@media (hover: hover) { .rail-h .go:hover { background: var(--accent-hover); } }
 .rail-h .go:active { background: var(--accent-pressed); }
 .rail-h .go:disabled { opacity: .3; pointer-events: none; }
 .rail-h .go { display: flex; align-items: center; height: 44px; padding: 0 16px; }
@@ -7334,10 +7304,12 @@ body.light-theme {
 .rail-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 0 var(--pr, 12px) 0 var(--pl, 12px); border: 0; border-radius: 7px; background: none;
                     color: var(--ink-secondary); font: inherit; font-size: 14px; font-weight: 500; text-align: left; white-space: nowrap; cursor: pointer; }
 .rail-menu button span { flex: 1; }
-.rail-menu button:hover, .rail-menu button:focus-visible { background: var(--rl-hover); color: var(--ink); outline: 0; }
+.rail-menu button:focus-visible { background: var(--rl-hover); color: var(--ink); outline: 0; }
+@media (hover: hover) { .rail-menu button:hover { background: var(--rl-hover); color: var(--ink); outline: 0; } }
 .rail-menu button.cur { color: var(--ink); font-weight: 560; }
 .rail-menu button.red { color: var(--danger); }
-.rail-menu button.red:hover, .rail-menu button.red:focus-visible { background: var(--danger-bg); }
+.rail-menu button.red:focus-visible { background: var(--danger-bg); }
+@media (hover: hover) { .rail-menu button.red:hover { background: var(--danger-bg); } }
 .rail-menu button:disabled { color: var(--ink-quaternary); pointer-events: none; }
 .rail-menu hr { margin: 4px -4px; border: 0; border-top: 1px solid var(--line); }
 
@@ -7396,9 +7368,22 @@ body.light-theme {
   .ph-bar { display: flex; margin: 0 auto var(--ph-b); }
   .ph-bar span + span::before, .rail-h .go span + span::before { content: '·'; margin-right: 8px; }   /* 2 items · ₱157.00, centred */
   .rail-h { position: fixed; inset: 0; z-index: 97; max-height: none; margin: 0; padding: calc(8px + var(--ph-top, 0px)) 8px var(--ph-b); background: var(--canvas, var(--bg));
-            transform: translateX(100%); visibility: hidden; transition: transform .3s var(--rl-ease), visibility 0s .3s; }   /* out: the plain slide, the whole page to the right */
+            transform: translateX(100%); visibility: hidden; transition: transform var(--push-dur) var(--push-ease), visibility 0s var(--push-dur); }   /* a ‹ page: in from the right and back out on the push tokens (owner 2026-11-16) */
   .rail-h .go, .rail-h #payBtn { justify-self: center; justify-content: center; gap: 8px; width: min(100% - 48px, 260px); height: var(--bar-h); border: 0; border-radius: calc(var(--rl-r) + 2px); }   /* as the bar; both 260 wide (owner 2026-10-18: "less wide", then "a little bit wider ... 260") */
-  #app.ph-cart .rail-h { transform: none; visibility: visible; transition: none; animation: ph-cart-bg .36s var(--rl-ease); }   /* in: the keyframes below, not the slide */
+  #app.ph-cart .rail-h { transform: none; visibility: visible; transition: transform var(--push-dur) var(--push-ease); }
+  /* Sell a third left under it, as every ‹ page's page under: its content only (.catalog). Never .catalog-wrap: its sheets live
+     in it (the customer list, Dine-in's / Discount's / a line's edit sheet, the scanner), and a moved .catalog-wrap shifted them
+     a third left and pulled the fixed ones under the cart page (owner 2026-11-16: Dine-in and Discount did nothing). With the
+     customer list open over the cart, Sell's search row is the list's head: it stays put, at once */
+  .catalog-wrap > .catalog { transition: transform var(--push-dur) var(--push-ease); }
+  #app.ph-cart:not(.again) .catalog-wrap:not(:has(> .vsheet.open)) > .catalog { transform: translateX(-30%); }
+  .catalog-wrap:has(> .vsheet.open) > .catalog { transition: none; }
+  /* the anchor (owner 2026-11-16): Check out sits on the cart bar's very pixels, so it doesn't ride the page: it moves the page's
+     opposite (stays put) and its words fade in over the bar's ("4 items · ₱500" -> "Check out · ₱500"), and back. Not in Add
+     tile's sheet (.again: the same button is Make another) or at the checkout (.co-mode tucks it) */
+  #app:not(.again) .rail-h:not(.co-mode) #payBtn { transform: translateX(-100vw); opacity: 0;
+    transition: transform var(--push-dur) var(--push-ease), opacity .2s ease-out, background-color .12s; }
+  #app.ph-cart:not(.again) .rail-h:not(.co-mode) #payBtn { transform: none; opacity: 1; }
   /* ‹ inside the box (owner 2026-10-13), its cell sized so the icon sits exactly on the ☰'s spot (the rail's 8 + the box's 1 + 19 = 28 = the
      ☰'s centre): items -> cart it only turns, never shifts. --ink like the ☰, so it doesn't dim as it turns */
   .rail-h .ph-back { display: grid; place-items: center; flex: none; width: 39px; border: 0; border-right: 1px solid var(--line); border-radius: calc(var(--rl-r) - 1px) 0 0 calc(var(--rl-r) - 1px);
@@ -7406,15 +7391,8 @@ body.light-theme {
   .rail-h .ph-back:active { background: var(--rl-hover); }
   .rail-h .ph-back .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }   /* every ‹ one size (--circle-*) */
   .rail-h .c-row .cust { border-radius: 0; padding-left: 14px; }
-  /* Items <-> cart page (owner 2026-10-13): the live page, no snapshots. The cart's grey fades in over the items; the items and Walk-in |
-     Discount cards slide 60px and fade, from the right. Going in only: keyframes, so coming
-     out is the plain slide above (owner 2026-10-13: the reversed fade looked bad). The customer box only fades, so its ‹ fades in on the
-     ☰'s pixel. No fade between Check out and the bar: it showed two ₱ amounts and looked like a jump */
-  #app.ph-cart .rail-h > .card { animation: ph-cart-in .36s var(--rl-ease) both; }
-  #app.ph-cart .rail-h > .who { animation-name: ph-cart-fade; }
-  @keyframes ph-cart-bg { from { background-color: transparent; } }
-  @keyframes ph-cart-in { from { opacity: 0; transform: translateX(60px); } }
-  @keyframes ph-cart-fade { from { opacity: 0; } }
+  /* Items <-> cart page: was the grey fading in and the cards nudging 60px in (owner 2026-10-13); now a ‹ page as every other
+     (owner 2026-11-16, docs/design-pos.md "Motion") */
   /* ☰ <-> ‹, a small morph (owner 2026-10-13: the full line turn looked weird): the one shrinks a little as the other grows in on the same spot.
      Not while the customer list is open over the cart page: its ✕ stays full size */
   #sidebarToggle svg, .rail-h #cartBack svg { transition: transform .24s var(--rl-ease); }
@@ -7515,7 +7493,7 @@ body.light-theme {
 .lv .sq { display: inline-flex; align-items: center; justify-content: center; flex: none; width: var(--bar-h); height: var(--bar-h); border: 1px solid var(--line);
           border-radius: var(--rl-r); background: var(--rl-card); color: var(--ink-secondary); box-shadow: var(--rl-shadow); transition: background-color .12s, color .12s; }
 .lv .sq[hidden] { display: none; }   /* the display above beat [hidden]: Shift's Print showed with no shift (audit 2026-10-19) */
-.lv .sq:hover { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { .lv .sq:hover { background: var(--rl-hover); color: var(--ink); } }
 .lv .sq.back { width: 32px; margin-left: -8px; border: 0; background: none; box-shadow: none; color: var(--ink); }   /* Back is a bare chevron, no box (rednote's) */
 .lv .sq.ty-edit-btn .ic { width: 24px; height: 24px; stroke-width: 1.8; }
 .lv .sq.back .ic { width: var(--circle-ic); height: var(--circle-ic); stroke-width: var(--circle-sw); }   /* every ‹ one size (--circle-*) */
@@ -7536,7 +7514,8 @@ body .lv .e-top .acts .act { background: none; box-shadow: none; color: var(--in
 .lv .find.typed .x { display: grid; }
 :is(.lv, .vs-search) .more { position: relative; display: grid; place-items: center; flex: none; width: 52px; border-left: 1px solid var(--line);
             border-radius: 0 calc(var(--rl-r) - 1px) calc(var(--rl-r) - 1px) 0; color: var(--ink-secondary); transition: background-color .12s, color .12s; }
-:is(.lv, .vs-search) .more:is(:hover, [aria-expanded="true"]) { background: var(--rl-hover); color: var(--ink); }
+:is(.lv, .vs-search) .more[aria-expanded="true"] { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { :is(.lv, .vs-search) .more:hover { background: var(--rl-hover); color: var(--ink); } }
 :is(.lv, .vs-search) .more.on { color: var(--rl-on); }
 :is(.lv, .vs-search) .more.on::after { content: ""; position: absolute; top: 12px; right: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--rl-on); }
 
@@ -7554,7 +7533,7 @@ body.light-theme .empty .pic { background-image: var(--pic); }
 .empty .e-line .e-act { display: inline; margin: 0; padding: 0; border: 0; background: none; font: inherit; font-weight: 500; color: var(--cta-solid); }
 .empty .e-more { height: 0; display: grid; justify-items: center; align-content: start; margin-top: 4px; }   /* buttons under the line (Sell search) hang below it and don't count for the centring: picture + line sit on the middle like every other empty page (owner 2026-11-16: "a bit lower so the page is balanced") */
 .empty .e-more .e-act { position: relative; padding: 6px 12px; border: 0; background: none; color: var(--cta-solid); font: inherit; font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
-.empty .e-act:hover { opacity: .8; }
+@media (hover: hover) { .empty .e-act:hover { opacity: .8; } }
 .empty > b { font-size: 17px; font-weight: 600; color: var(--ink); }   /* the swap list's two-line hint (pos-sell.js), no picture */
 .empty > b + span { max-width: 30ch; font-size: 14px; line-height: 1.4; color: var(--ink-tertiary); }
 #variantList .empty { height: auto; }
@@ -7576,7 +7555,8 @@ body.light-theme .empty .pic { background-image: var(--pic); }
 body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px rgb(26 26 26 / .07); }
 .lv .act .ic { width: 15px; height: 15px; }
 .lv .act.icon { padding: 0; }
-.lv .act:hover, .lv .act[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+.lv .act[aria-expanded="true"] { background: var(--surface-hover); color: var(--ink); }
+@media (hover: hover) { .lv .act:hover { background: var(--surface-hover); color: var(--ink); } }
 .lv .act:disabled { color: var(--ink-quaternary); pointer-events: none; }
 .lv .act.primary { min-width: 76px; background: var(--accent); color: var(--accent-ink); box-shadow: none; font-weight: 550; }
 
@@ -7619,7 +7599,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
    so a full list scrolled to the end doesn't draw two lines */
 .lv :is(.o-rail, .fc-rows, .o-days) .row { border-bottom: 1px solid var(--line); }
 .lv .o-rail .lines { margin-bottom: -1px; }
-.lv :is(.o-rail, .fc-rows, .o-days) button.row:hover { background: var(--rl-hover); }
+@media (hover: hover) { .lv :is(.o-rail, .fc-rows, .o-days) button.row:hover { background: var(--rl-hover); } }
 .lv :is(.o-rail, .fc-rows, .o-days) .row.cur { background: var(--rl-track); }
 .lv :is(.o-rail, .fc-rows, .o-days) .row .nm, .lv :is(.o-rail, .fc-rows, .o-days) .row .rt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .lv :is(.o-rail, .fc-rows, .o-days) .row .nm { flex: 1; }
@@ -7677,7 +7657,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 .lv .page .lines { padding-bottom: 88px; }   /* room under the last row for + */
 /* the Items list's rows (Reports' Top items borrows them); :where(...) keeps them off a card list's Orders rows (Shift) at no specificity */
 .lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)) { width: 100%; min-height: 48px; padding: 6px 10px; border-bottom: 1px solid var(--line); background: none; text-align: left; font-size: 14px; transition: background-color .12s; }
-.lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)):hover { background: var(--rl-hover); }
+@media (hover: hover) { .lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)):hover { background: var(--rl-hover); } }
 .lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)) .nm { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)) .nm b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .lv .page .row:where(:not(:is(.fc-rows, .o-days) > *)) .tx { display: grid; min-width: 0; line-height: 1.3; }   /* variants sit under the name, same spot on every row */
@@ -7688,7 +7668,7 @@ body.light-theme .lv .act { box-shadow: 0 0 0 1px var(--rl-hair), 0 1px 2px -1px
 /* Items | Categories | Modifiers: the top bar's switch, a card like the search */
 .lv .kinds { display: flex; flex: none; gap: 2px; height: var(--bar-h); padding: 4px; }
 .lv .kinds button { padding: 0 14px; border-radius: calc(var(--rl-r) - 5px); color: var(--ink-secondary); font-size: 14px; font-weight: 500; transition: background-color .12s, color .12s; }
-.lv .kinds button:hover { color: var(--ink); }
+@media (hover: hover) { .lv .kinds button:hover { color: var(--ink); } }
 .lv .kinds button.cur { background: var(--rl-track); color: var(--ink); }
 .lv .kinds button { position: relative; z-index: 1; }
 .lv .kinds.slid button.cur { background: none; }
@@ -7733,7 +7713,7 @@ body.light-theme .lv :not(.fph) > .thumb:not([style]) { background: var(--bg-sof
 .lv .ol .all { display: grid; }
 .lv .ol .line + .line { border-top: 1px solid var(--line); }
 .lv .ol .row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 8px var(--rl-m); border: 0; background: none; text-align: left; transition: background-color .12s; }
-.lv .ol .row:not(:disabled):hover { background: var(--rl-hover); }
+@media (hover: hover) { .lv .ol .row:not(:disabled):hover { background: var(--rl-hover); } }
 .lv .ol .row .nm { flex: 1; display: grid; min-width: 0; font-size: 14px; line-height: 1.3; }
 .lv .ol .row .nm small { color: var(--ink-tertiary); font-size: 12px; }
 .lv .ol .row .amt { font-size: 14px; font-weight: 550; white-space: nowrap; }
@@ -7742,7 +7722,7 @@ body.light-theme .lv :not(.fph) > .thumb:not([style]) { background: var(--bg-sof
 .lv .ol .step { display: flex; align-items: center; gap: 10px; padding: 0 var(--rl-m) 10px calc(var(--rl-m) + 30px); color: var(--ink-secondary); }
 .lv .ol .step span { flex: 1; white-space: nowrap; }
 .lv .ol .step button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-input); background: var(--rl-card); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); font-size: 17px; }
-.lv .ol .step button:hover { background: var(--rl-hover); }
+@media (hover: hover) { .lv .ol .step button:hover { background: var(--rl-hover); } }
 .lv .ol .step b { min-width: 24px; text-align: center; font-size: 14px; font-weight: 550; }
 .lv .ol .step small { min-width: 44px; color: var(--ink-tertiary); font-size: 12px; }
 .lv .acts > [hidden] { display: none; }
@@ -7867,7 +7847,8 @@ body.light-theme .lv .tcolors .tc { background: hsl(var(--tc) 75% 86%); }
 body .lv .tcolors .tc.on, body.light-theme .lv .tcolors .tc.on { box-shadow: 0 0 0 2px var(--rl-card), 0 0 0 4px var(--ink); }   /* the ring's gap is the block's white */
 .lv #itemMarginNote { color: var(--ink-tertiary); }   /* worked out, not typed */
 body .lv .fc .act.st-pick { min-width: 0; height: 36px; padding: 0; background: none; box-shadow: none; color: var(--ink); font-size: 15px; font-weight: 400; }
-.lv .fc .st-pick:hover, .lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }
+.lv .fc .st-pick[aria-expanded="true"] { background: none; color: var(--ink); }
+@media (hover: hover) { .lv .fc .st-pick:hover { background: none; color: var(--ink); } }
 body .lv .fc .sw:not(:checked) { background: var(--line-strong); }   /* on the grey tile the usual off track vanished */
 /* a › opens a subpage that slides in from the right, Back slides it out (pos-items itemGo) */
 .lv .form.push { animation: pg-from-r var(--push-dur) var(--push-ease); }
@@ -7883,7 +7864,7 @@ body.light-theme .lv .in { background: var(--surface-2); box-shadow: inset 0 0 0
 .lv .in[type=date] { color-scheme: dark; }
 body.light-theme .lv .in[type=date] { color-scheme: light; }
 .lv .link { flex: none; color: var(--ink-secondary); font-size: 13px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--line-strong); }
-.lv .link:hover { color: var(--ink); }
+@media (hover: hover) { .lv .link:hover { color: var(--ink); } }
 .lv .note { padding: 14px 16px; color: var(--ink-tertiary); }
 .lv .note b { color: var(--ink); font-weight: 550; }
 .lv .pills { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -7906,7 +7887,7 @@ body:not(.light-theme) :is(.lv, .cust-sheet, .esheet) .sw:not(:checked):is(*) { 
 .lv .vt .in.n { text-align: right; }
 .lv .vt .mg, .lv .vt .st { color: var(--ink-secondary); }
 .lv .vt .del, .lv .opt .del { width: 28px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: var(--ink-tertiary); }
-.lv .vt .del:hover, .lv .opt .del:hover { background: var(--danger-bg); color: var(--danger); }
+@media (hover: hover) { .lv .vt .del:hover, .lv .opt .del:hover { background: var(--danger-bg); color: var(--danger); } }
 .lv .fc .foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 12px; border-top: 1px solid var(--line); color: var(--ink-tertiary); }
 /* the category / modifier editor: option rows, then a tick for each item it's on */
 .lv .opt { display: grid; grid-template-columns: minmax(0,1fr) 110px 28px; align-items: center; gap: 8px; min-height: 52px; padding: 6px 8px 6px 16px; }
@@ -8276,7 +8257,7 @@ body.light-theme .es-vat .sw:not(:checked) { background: var(--line-strong); }  
 .pay-sheet .pa input { padding-right: 104px; }
 .pay-sheet .pa button { position: absolute; top: 4px; right: 4px; bottom: 4px; padding: 0 10px; border: 0; border-radius: 6px; background: none;
                         color: var(--ink-secondary); font: inherit; font-weight: 500; cursor: pointer; }
-.pay-sheet .pa button:hover { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { .pay-sheet .pa button:hover { background: var(--rl-hover); color: var(--ink); } }
 .pay-sheet .pr { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 40px; border-top: 1px solid var(--line); cursor: pointer; }
 .pay-sheet .pr:last-child { border-bottom: 1px solid var(--line); }
 .pay-sheet .pr small { flex: 1; color: var(--ink-tertiary); font-size: 12px; white-space: nowrap; }
@@ -8469,16 +8450,16 @@ body.light-theme .es-vat .sw:not(:checked) { background: var(--line-strong); }  
 .pin-key { width: var(--pk); height: var(--pk); border-radius: 50%; background: var(--tile); color: var(--ink);
   font-size: calc(var(--pk) * .37); font-weight: 400; font-variant-numeric: tabular-nums;
   display: grid; place-items: center; transition: background .12s, transform .08s; touch-action: manipulation; }
-.pin-key:hover { background: var(--surface-hover); }
+@media (hover: hover) { .pin-key:hover { background: var(--surface-hover); } }
 .pin-key:active { transform: scale(.94); background: var(--bg-softer); }
 .pin-key:disabled { color: var(--ink-quaternary); pointer-events: none; }   /* off: dimmed, never see-through (owner 2026-11-15) */
 .pin-key svg { width: 40%; height: 40%; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .pin-key:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* the card's keys sit on --surface: a step darker so they still read as keys */
 #pinModal:not(.pin-lock) .pin-key { background: var(--bg-soft); }
-#pinModal:not(.pin-lock) .pin-key:hover { background: var(--bg-softer); }
+@media (hover: hover) { #pinModal:not(.pin-lock) .pin-key:hover { background: var(--bg-softer); } }
 .pin-cancel { margin-top: 14px; height: 44px; padding: 0 18px; font-size: 14px; font-weight: 500; color: var(--ink-secondary); border-radius: var(--r-button); }
-.pin-cancel:hover { color: var(--ink); background: var(--bg-soft); }
+@media (hover: hover) { .pin-cancel:hover { color: var(--ink); background: var(--bg-soft); } }
 .pin-lock .pin-cancel { display: none; }
 @media (prefers-reduced-motion: reduce) { .pin-dots.shake { animation: none; } }
 /* The account's sign-in (Settings › Log out, owner 2026-10-13): the lock screen's plain page and optical centre, email + password, one button */
@@ -8525,7 +8506,7 @@ body.light-theme .st-sel select { color-scheme: light; }
 .lv .st-ip { width: 170px; height: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 .st-prn { display: grid; gap: 6px; padding: 0 16px 12px; }   /* what Scan found, under its row */
 .st-prn .prn-item { border: 0; background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair); }
-.st-prn .prn-item:hover { background: var(--rl-hover); }
+@media (hover: hover) { .st-prn .prn-item:hover { background: var(--rl-hover); } }
 .st-prn .prn-empty { padding: 0; }
 /* Connected / Offline: a dot and the word, no chip. The dot carries the state; Offline is a warning, not red. */
 .st-prn .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 0; background: none; color: var(--ink-secondary); }
@@ -8650,7 +8631,7 @@ body.qs-on:not(:has(.view-items.active)) :is(#qs, #qsTickbar) { display: none; }
 .qs-pg .fm-h { pointer-events: none; }
 .qs-mode { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: var(--bar-h); padding: 0 10px; border: 0; border-radius: var(--r-input);
            background: none; color: inherit; font: inherit; pointer-events: auto; cursor: pointer; }
-.qs-mode:hover:not(:disabled) { background: var(--rl-hover); }
+@media (hover: hover) { .qs-mode:hover:not(:disabled) { background: var(--rl-hover); } }
 .qs-mode:disabled { cursor: default; }
 .qs-mode span { overflow: hidden; text-overflow: ellipsis; }
 .qs-mode .ic { flex: none; width: 16px; height: 16px; color: var(--ink-tertiary); }
@@ -8666,7 +8647,7 @@ body .qs-pg .e-top .act.primary:disabled { color: var(--ink-quaternary); }
 .qs-ln small { color: var(--ink-tertiary); font-size: 12px; }
 .qs-pg .fc .fr.qs-ln .ctl { gap: 0; flex: none; }
 .qs-pm { flex: none; width: 30px; height: 36px; border: 0; border-radius: var(--r-input); background: none; color: var(--ink-secondary); font-size: 20px; line-height: 1; }
-.qs-pm:hover { background: var(--rl-hover); color: var(--ink); }
+@media (hover: hover) { .qs-pm:hover { background: var(--rl-hover); color: var(--ink); } }
 .qs-pg .fc .fr .qs-amt.in { flex: none; width: 52px; height: 36px; padding: 0 6px; border-radius: var(--r-input); background: var(--rl-soft); box-shadow: inset 0 0 0 1px var(--rl-hair);
                      font-size: 15px; font-weight: 550; text-align: center; }
 .qs-pg .fc .fr .qs-amt.in:focus { box-shadow: inset 0 0 0 1.5px var(--ink); }
@@ -9071,7 +9052,7 @@ body.light-theme .product-grid[data-sl="rows"] .vs-row { box-shadow: 0 0 0 1px v
 .es-hero.mq { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: .08em; }
 /* Unavailable: greyed and can't be picked; set back in Items › Modifiers */
 .esheet .es-row.out { color: var(--ink-tertiary); cursor: default; }
-.esheet .es-row.out:hover { background: var(--tile); }
+@media (hover: hover) { .esheet .es-row.out:hover { background: var(--tile); } }
 /* how far through the questions, just under the item's title as a loading bar (owner 2026-11-06, mods-lab.html D): the fill in
    the blue button's own material (.cta), the track flat ("too skeuomorphic" as a groove); grown from the last question's mark (--was) */
 .es-prog { position: absolute; z-index: 1; top: calc(var(--es-top) + 40px); left: 50%; translate: -50% 0; pointer-events: none; }   /* under the title's words, on any size */
@@ -9172,10 +9153,9 @@ body.light-theme { --pop-drop: drop-shadow(0 20px 50px rgb(0 0 0 / .15)) drop-sh
 .delivery-map-footer .pay-actions > * { min-width: 0; height: 44px; }
 :is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .secondary-btn,
 #pinModal:not(.pin-lock) .pin-cancel { background: var(--rl-card); color: var(--ink); box-shadow: var(--glass-ring); }
-:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .secondary-btn:hover:not(:disabled),
-#pinModal:not(.pin-lock) .pin-cancel:hover { border: 0; background: var(--rl-hover); color: var(--ink); }
-:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger,
-:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger:hover:not(:disabled) { background: var(--rl-track); color: var(--danger); }
+@media (hover: hover) { :is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .secondary-btn:hover:not(:disabled), #pinModal:not(.pin-lock) .pin-cancel:hover { border: 0; background: var(--rl-hover); color: var(--ink); } }
+:is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger { background: var(--rl-track); color: var(--danger); }
+@media (hover: hover) { :is(.pay-sheet .pb, .modal .pay-actions, .pop-ft) > .primary-btn.danger:hover:not(:disabled) { background: var(--rl-track); color: var(--danger); } }
 /* the old .modal cards: the same head and spacing; their ✕ goes once the card has a Cancel / Close (the map keeps it) */
 .modal-head { padding: 24px 24px 0; }
 .modal-body { padding: 14px 24px 24px; }
@@ -9548,8 +9528,14 @@ html.q-go .esheet.open .es-ft { view-transition-name: q-ft; }
 html.co-go #checkoutSteps > .co-step:not([hidden]) { view-transition-name: co-body; }
 ::view-transition-group(co-body) { animation: none; }
 ::view-transition-old(co-body) { animation: q-out .12s ease-in .04s both; }
-::view-transition-new(co-body) { animation: q-in .14s ease-out both; background: var(--co-bg, #000); }   /* quick: .2s read slow here (owner 2026-11-16) */
+::view-transition-new(co-body) { animation: q-in .14s ease-out both; background: var(--co-bg, var(--fd-bg, #000)); }   /* quick: .2s read slow here (owner 2026-11-16) */
 @keyframes q-out { to { opacity: 0; } }
+/* content that changes in place (pos-core.js fadeSwap, owner 2026-11-16): Reports' period step, Chat's History; the new fades
+   in over the old, which goes a touch behind (a taller old one must not linger past the new one's edge) */
+html.fd-rp .view-reports .rp-body, html.fd-chat .view-chat { view-transition-name: pg-fade; }
+::view-transition-group(pg-fade) { animation: none; }
+::view-transition-old(pg-fade) { animation: q-out .12s ease-in .06s both; }
+::view-transition-new(pg-fade) { animation: q-in .2s ease-out both; background: var(--fd-bg, #000); }
 /* dine-in's Pay now (pos-tables.js tbPayNow): the payment page fades in over the Choice page, as Walk-in's Check out fades in */
 html.co-page-go .view-checkout { view-transition-name: co-page; }
 ::view-transition-group(co-page) { animation: none; }
@@ -9572,5 +9558,13 @@ html.pg-drag::view-transition-old(pg-main), html.pg-drag::view-transition-new(pg
 @media (max-width: 720px) {
   .esheet { transform: translateX(100%); transition: transform var(--push-dur) var(--push-ease), visibility 0s var(--push-dur); }
   .esheet.open { transform: none; transition: transform var(--push-dur) var(--push-ease); }
+}
+/* Dine-in's and Discount's sheets on the phone (owner 2026-11-16): quick picks, not pages, so they fade, not slide over. The
+   ground comes over the cart page fast (.12s), the contents fade in just behind it (.2s from .06s); out, a quick fade. Never a
+   bare blank first: the two overlap. The contents' fade runs only as it opens (pos-sell.js es-opening): each tap redraws them */
+@media (max-width: 720px) {
+  .esheet.es-fade { transform: none; opacity: 0; transition: opacity .14s ease-in, visibility 0s .14s; }
+  .esheet.es-fade.open { transform: none; opacity: 1; visibility: visible; transition: opacity .12s ease-out; }
+  .esheet.es-fade.es-opening .es-card > * { animation: q-in .2s ease-out .06s both; }
 }
 @media (prefers-reduced-motion: reduce) { ::view-transition-old(pg-main), ::view-transition-new(pg-main) { animation: none !important; } }
