@@ -47,6 +47,17 @@ function tbPick() {
   $('#checkoutMethods').innerHTML = tbPickTiles();
   $('#tbTtl').textContent = 'Choice';
 }
+// Pay now from the phone's Choice page: the payment page fades in over it in one go, as Walk-in's Check out fades the checkout in
+// (owner 2026-11-16: it just appeared). styles.css "Motion", co-page.
+function tbPayNow() {
+  if (!document.startViewTransition || !calmMs(1)) return renderCheckout();
+  const H = document.documentElement;
+  let bg = '';
+  for (let el = $('.view-checkout'); el && !bg; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)$|transparent/.test(c)) bg = c; }
+  H.style.setProperty('--co-bg', bg || getComputedStyle(document.body).backgroundColor);
+  H.classList.add('co-page-go');
+  document.startViewTransition(renderCheckout).finished.finally(() => H.classList.remove('co-page-go'));
+}
 function tbPickOff() {
   $('#checkoutApp')?.classList.remove('tb-pick', 'tb-c');
 }
@@ -151,7 +162,7 @@ function tbInit() {
     if (pick) {
       const k = pick.dataset.tb;
       if (es?.kind === 'tb') closeEditSheet();   // the iPad's picker (pos-sell.js drawEditSheet)
-      if (k === 'pay') return state.view === 'checkout' ? renderCheckout() : openPaymentModal();
+      if (k === 'pay') return state.view === 'checkout' ? tbPayNow() : openPaymentModal();
       return tbSend(k);
     }
     if (bill) return tbOpen(bill.dataset.tbBill);

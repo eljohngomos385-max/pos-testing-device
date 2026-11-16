@@ -86,6 +86,13 @@ function renderCheckoutSub() {
 }
 
 // Under the fixed total: the method tiles, or the chosen method's one detail.
+// QR's picture raises the amount to make room (styles.css .qr-up), the one move the column makes, so the slide runs only then:
+// .qr-up going up, .qr-down for the way back (owner 2026-11-16: Pay now's page change slid the amount down from the top).
+function qrUp(on) {
+  const app = $('#checkoutApp'), was = app.classList.contains('qr-up');
+  app.classList.toggle('qr-up', on);
+  if (was && !on) { app.classList.add('qr-down'); clearTimeout(qrUp.t); qrUp.t = setTimeout(() => app.classList.remove('qr-down'), 500); }
+}
 function showPayStep() {
   if (SP) return spRender();   // split: its own steps (a customer change re-renders the checkout)
   const step = !state.paymentMethodChosen ? 'method' : state.paymentMethod === 'cash' ? 'cash' : 'paid';
@@ -125,7 +132,7 @@ function showPayStep() {
   if (!state.paymentMethodChosen) qrDone = '';
   const paid = $('#checkoutSteps [data-step="paid"]'), pic = payTypes().qrCodes[keyNow()];
   const qr = state.paymentMethodChosen && !paid.hidden && !!pic && qrDone !== keyNow();
-  $('#checkoutApp').classList.toggle('qr-up', qr);
+  qrUp(!!qr);   // !!: an undefined (no method picked yet) made toggle flip it, raising the amount on the methods by turns and sliding it there (owner 2026-11-16)
   $('#qrStep').hidden = !qr;
   if (qr && showPayStep.held) $('#qrStep').style.animation = 'none';
   if (qr) {
@@ -252,7 +259,7 @@ function spRender() {
   paid.hidden = cash || full || left === due;
   paid.textContent = `left of ${peso(due)}`;
   $$('#checkoutSteps [data-step]').forEach(el => { el.hidden = el.dataset.step !== (k === 'pick' ? 'method' : k === 'ref' ? 'paid' : k === 'qr' ? 'qr' : 'cash'); });
-  $('#checkoutApp').classList.toggle('qr-up', k === 'qr');
+  qrUp(k === 'qr');
   $('#checkoutBackText').textContent = 'Back';
   $('#otherMethodInput').hidden = true;
   $('#payRefInput').hidden = k !== 'ref';
@@ -526,7 +533,8 @@ function showCheckoutSuccess(order, handBack = 0) {
   const changeEl = $('#successChange');
   $('#successChangeLbl').hidden = !(change > 0);
   $('#successChangeLbl').textContent = handBack ? 'Hand back' : 'Change';
-  changeEl.textContent = change > 0 ? peso(0) : 'Complete';
+  changeEl.textContent = change > 0 ? peso(change) : 'Complete';
+  delete changeEl.dataset.ht; changeEl.style.visibility = '';   // a sale ended before the last one's change showed
   clearTimeout(showCheckoutSuccess._t);
   $('#checkoutSteps').hidden = true;
   $('#checkoutDone').hidden = false; // un-hiding replays the rise
@@ -551,16 +559,16 @@ function showCheckoutSuccess(order, handBack = 0) {
     $('#railCount').textContent = SalesMath.plural(n, 'item');
     $('#side').classList.remove('empty-cart');
   }
-  if (change > 0) {   // the change counts up; no fit, as the total on this line has none
+  // the change grows in as Split's money left does (heroPlay: each figure from half size, left to right), once the paid
+  // moment has gone; it counted up before, which read slow (owner 2026-11-16). Hidden under the moment till then.
+  if (change > 0 && !still) {
+    changeEl.style.visibility = 'hidden';
     showCheckoutSuccess._t = setTimeout(() => {
-      const t0 = performance.now();
-      const step = (now) => {
-        const k = still ? 1 : Math.min(1, (now - t0) / 700);
-        changeEl.textContent = peso(change * (1 - (1 - k) ** 3));
-        if (k < 1 && showCheckoutSuccess._orderId === order.id) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
-    }, still ? 0 : 280 + pmT);
+      changeEl.style.visibility = '';
+      if (showCheckoutSuccess._orderId !== order.id) return;
+      changeEl.dataset.ht = 'change';
+      heroPlay(changeEl.parentElement, null, 'done:' + order.id);
+    }, pmT);
   }
   showCheckoutSuccess._orderId = order.id;
 }

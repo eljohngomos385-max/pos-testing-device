@@ -3728,6 +3728,7 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-tile:hover { background: var(--surface-hover); }
 .co-tile:active { transform: scale(.98); }
 .co-tile .co-ic { width: 26px; height: 26px; stroke-width: 1.5; color: var(--ink-secondary); }
+.co-ic.flat { fill: currentColor; stroke: none; color: var(--side-ic, var(--ink-secondary)); }   /* a flat glyph in the menu's own grey, each theme's (owner 2026-11-16): one solid shape, details cut out */
 .co-big { font-size: 20px; font-weight: 550; letter-spacing: -.02em; line-height: 1.15; }
 .co-tile small { color: var(--ink-tertiary); font-size: 12.5px; font-weight: 400; }
 
@@ -3845,13 +3846,13 @@ body.light-theme .esheet { --es-hover: var(--bg-soft); }
 .co-done > .sp-paid, .co-done .co-tiles { animation: co-rise .45s var(--co-ease) both; animation-delay: calc(var(--pm-t) + 160ms); }
 /* the paid moment (owner 2026-11-06, done-lab's Edge low): right after paying, a clean screen draws a blue tick while its
    bottom glows once, then fades onto Sale complete. --pm-t = when the page shows; pos-checkout.js waits it for the count-up. */
-.co { --pm-t: 1740ms; }
+.co { --pm-t: 1000ms; }   /* was 1740: the tick read slow (owner 2026-11-16) */
 .pm { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; background: var(--canvas, var(--bg));   /* takes taps: a second tap on Pay would land on New sale under it */
-      animation: pm-off .42s calc(var(--pm-t) - 180ms) forwards; }   /* no fade in: Sale complete would show through it first */
+      animation: pm-off .3s calc(var(--pm-t) - 200ms) forwards; }   /* no fade in: Sale complete would show through it first */
 .pm svg { width: 84px; height: 84px; overflow: visible; }
 .pm path { fill: none; stroke: var(--cta-solid); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 40; stroke-dashoffset: 40;
-           animation: co-draw .36s .48s var(--co-ease) forwards; }
-.pm::before { content: ''; position: absolute; inset: auto 0 0; height: 45%; opacity: 0; animation: pm-glow 1.32s .2s ease-out both;
+           animation: co-draw .3s .12s var(--co-ease) forwards; }   /* drawn by .42s (was .84s) */
+.pm::before { content: ''; position: absolute; inset: auto 0 0; height: 45%; opacity: 0; animation: pm-glow .8s .05s ease-out both;
               background: radial-gradient(120% 100% at 50% 100%, color-mix(in srgb, var(--cta-solid) 45%, transparent), rgb(142 194 240 / .15) 45%, transparent 75%); }   /* the middle: --cta-bg's light glow stop */
 @keyframes pm-off { to { opacity: 0; visibility: hidden; } }
 @keyframes pm-glow { 25% { opacity: 1; } 100% { opacity: 0; } }
@@ -8944,8 +8945,8 @@ body.light-theme .vs-row .pic[style] { background: hsl(var(--tc) 75% 86%); }
 .vs-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 
 /* Payment types' page (owner 2026-10-22, try-pay-qr.html): a type with a picture shows it first at checkout (pos-checkout.js showPayStep) */
-.co-col { transition: padding-top .45s var(--co-ease); }
-.co-hero { transition: padding-bottom .45s var(--co-ease); }
+:is(.qr-up, .qr-down) .co-col { transition: padding-top .45s var(--co-ease); }   /* only as the picture comes or goes (pos-checkout.js qrUp): always on, */
+:is(.qr-up, .qr-down) .co-hero { transition: padding-bottom .45s var(--co-ease); }   /* Pay now's page change slid the amount down from the top */
 .qr-up .co-col { padding-top: max(16px, calc((var(--hero-y) - var(--co-top-h)) * .75)); }   /* a quarter up from the hero line: the QR fits, the stack sits mid-screen (owner 2026-10-22: half was too high) */
 .qr-up .co-hero { padding-bottom: 20px; }
 /* the picture as it is (a QR Ph card, a wallet screenshot), only made to fit; white under it, a wallet won't read a QR on dark */
@@ -9543,12 +9544,17 @@ html.q-go .esheet.open .es-ft { view-transition-name: q-ft; }
 ::view-transition-old(q-x), ::view-transition-old(q-ttl), ::view-transition-old(q-prog), ::view-transition-old(q-ft) { display: none; }
 ::view-transition-new(q-x), ::view-transition-new(q-ttl), ::view-transition-new(q-prog), ::view-transition-new(q-ft) { animation: none; }   /* the edge swipe drives them (app.js) */
 /* checkout's steps (pos-checkout.js showPayStep, owner 2026-11-16): the amount stays, the new step's boxes fade in over the last
-   ones as a modifier question does; the last ones go a touch behind (a taller step must not linger past the new one's edge) */
+   ones as a modifier question does, quicker; the last ones go a touch behind (a taller step must not linger past the new one's edge) */
 html.co-go #checkoutSteps > .co-step:not([hidden]) { view-transition-name: co-body; }
 ::view-transition-group(co-body) { animation: none; }
-::view-transition-old(co-body) { animation: q-out .2s ease-in .08s both; }
-::view-transition-new(co-body) { animation: q-in .2s ease-out both; background: var(--co-bg, #000); }
+::view-transition-old(co-body) { animation: q-out .12s ease-in .04s both; }
+::view-transition-new(co-body) { animation: q-in .14s ease-out both; background: var(--co-bg, #000); }   /* quick: .2s read slow here (owner 2026-11-16) */
 @keyframes q-out { to { opacity: 0; } }
+/* dine-in's Pay now (pos-tables.js tbPayNow): the payment page fades in over the Choice page, as Walk-in's Check out fades in */
+html.co-page-go .view-checkout { view-transition-name: co-page; }
+::view-transition-group(co-page) { animation: none; }
+::view-transition-old(co-page) { animation: none; }
+::view-transition-new(co-page) { animation: q-in .2s ease-out both; background: var(--co-bg, #000); }
 /* while the pictures slide, the pages that slide by CSS (an order's / customer's page, the item editor) land at once under them */
 html.pg-go :is(.lv .o-main, .lv .ov > .o-rail, .lv .editor, #itemsView > .page) { transition: none; }
 html.pg-fwd::view-transition-new(pg-main) { animation-name: pg-from-r; }

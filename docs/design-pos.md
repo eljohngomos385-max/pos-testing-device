@@ -212,8 +212,17 @@ Apple's rule: a page **slides**, a sheet **pops up**, a pop-up **grows in**. Not
     its keyboard only then) and hands the focus over once the page is drawn. Focusing right after the redraw call threw (the
     page wasn't there yet) and cut the rest of the tap short.
   - **Checkout's steps fade the same way** (owner 2026-11-16): methods → Cash's amounts / a confirm, and Back. The step showing
-    is `co-body`; the new one fades in over the last, which goes a touch behind (a taller one must not linger). The amount
-    stays and glides (its own padding transition) to where Cash puts it. Opening the checkout just shows its first step.
+    is `co-body`; the new one fades in over the last (.14s; .2s read slow here), which goes a touch behind (a taller one must
+    not linger). The amount never moves: it sits on the hero line on every step but QR's picture. It used to slide from the
+    top on opening and sit 41px higher over the methods: `toggle('qr-up', undefined)` flipped the class instead of clearing
+    it (fixed with `!!qr`). The column's padding slide runs only as QR's picture comes or goes (`qrUp`: .qr-up / .qr-down);
+    always on, dine-in's Pay now (the Choice page pulls the column up under Back) slid the amount down from the top.
+    Opening the checkout just shows its first step.
+  - **Dine-in's Pay now** (the phone's Choice page → the payment page) fades in over it in .2s, as Walk-in's Check out fades
+    the checkout in (`tbPayNow`, `co-page`); it just appeared.
+  - **Sale complete comes quicker** (owner 2026-11-16): the paid moment's tick starts at .12s (was .48s), `--pm-t` 1000ms
+    (was 1740). The change no longer counts up (it read slow): it grows in figure by figure as Split's money left does
+    (`heroPlay`, no snapshot), hidden under the paid moment till it goes.
   - **Let go and it carries on at the finger's speed**: the finish curve's first slope is set from the finger
     (`cubic-bezier(.3, y1, .325, 1)`, .24–.42s by the distance left); a fixed .14s after a slow hold read as a snap. A finger
     still for 80ms before it lifts is no flick (it went back on a held short swipe).
