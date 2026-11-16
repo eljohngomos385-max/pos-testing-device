@@ -330,10 +330,10 @@ function escapeHtml(s) {
 // img/empty/<pic>.webp and <pic>-dark.webp: plain pictures, no live filter, so swipes stay smooth on the iPhone (owner 2026-11-06).
 // They are fetched once at start and kept in memory (blob: URLs): a page shows its picture the moment it opens, never
 // after a trip to the server, which may say no-store (owner 2026-11-06: "it takes a while for it to load").
-const EMPTY_PICS = {};
+const EMPTY_PICS = {}, EMPTY_V = 2;   // bump when the pictures are baked again, so no device keeps an old copy (2: the C 35% lift)
 for (const f of 'search tag folder box receipt grid toggle plus percent person cash clock'.split(' ').flatMap(p => [p, p + '-dark']))
-  fetch(`img/empty/${f}.webp`).then(r => r.blob()).then(b => { EMPTY_PICS[f] = URL.createObjectURL(b); }).catch(() => {});
-const emptyPic = f => `url(${EMPTY_PICS[f] || `img/empty/${f}.webp`})`;
+  fetch(`img/empty/${f}.webp?v=${EMPTY_V}`).then(r => r.blob()).then(b => { EMPTY_PICS[f] = URL.createObjectURL(b); }).catch(() => {});
+const emptyPic = f => `url(${EMPTY_PICS[f] || `img/empty/${f}.webp?v=${EMPTY_V}`})`;
 function emptyState(pic, line, more = '') {
   return `<div class="empty"><div class="pic" style="--pic: ${emptyPic(pic)}; --pic-d: ${emptyPic(pic + '-dark')}" aria-hidden="true"></div>`
     + `<span class="e-line">${line}</span>${more ? `<div class="e-more">${more}</div>` : ''}</div>`;

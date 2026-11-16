@@ -9,19 +9,47 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=155" />
-  <link rel="stylesheet" href="/bo-products.css?v=124" />
-  <link rel="stylesheet" href="/bo-item.css?v=12" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=106" />
-  <link rel="stylesheet" href="/bo-sales.css?v=98" />
-  <link rel="stylesheet" href="/bo-suppliers.css?v=97" />
-  <link rel="stylesheet" href="/bo-staff.css?v=98" />
-  <link rel="stylesheet" href="/bo-insights.css?v=4" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=64" />
-  <link rel="stylesheet" href="/bo-calm.css?v=75" />
-  <link rel="stylesheet" href="/bo-sidebar.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=155" />
+  <link rel="stylesheet" href="bo-products.css?v=124" />
+  <link rel="stylesheet" href="bo-item.css?v=12" />
+  <link rel="stylesheet" href="bo-inventory.css?v=106" />
+  <link rel="stylesheet" href="bo-sales.css?v=98" />
+  <link rel="stylesheet" href="bo-suppliers.css?v=97" />
+  <link rel="stylesheet" href="bo-staff.css?v=98" />
+  <link rel="stylesheet" href="bo-insights.css?v=4" />
+  <link rel="stylesheet" href="bo-blocks.css?v=64" />
+  <link rel="stylesheet" href="bo-calm.css?v=75" />
+  <link rel="stylesheet" href="bo-sidebar.css?v=1" />
   <!-- Lab: Shopify-style list tables (Orders, Items, Customers). Only this copy loads it. -->
-  <link rel="stylesheet" id="labTables" href="/bo-shopify-tables.css?v=89" />
+  <link rel="stylesheet" id="labTables" href="bo-shopify-tables.css?v=89" />
+  <style>
+    /* Copy only (owner 2026-11-16): the store's name alone sits at the top in the glyph's place (no mark), the
+       account is bottom-left with its name, Settings is a gear bottom-right. Folded, the top is only the sidebar button. */
+    body.bo-light .bo-sidebar .side-loc { flex: 1; min-width: 0; margin: 0 0 0 -5px; }
+    body.bo-light .bo-sidebar .side-loc .side-switch-wrap { min-width: 0; }
+    /* the store name from Settings › Store › Store name (#locBiz), not the location cut from the address (#locName) */
+    body.bo-light .bo-sidebar .side-loc .ss-text .ss-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 400; color: var(--po-sidebar-ink); }
+    body.bo-light .bo-sidebar .side-loc .ss-text .ss-name { display: none; }
+    body.bo-light .bo-sidebar .side-loc .side-switch { width: auto; max-width: 100%; }
+    body.bo-light .bo-sidebar .side-store .acct { width: auto; padding: 0 10px 0 7px; }
+    body.bo-light .bo-sidebar .side-store .acct .ss-text { display: flex; }
+    body.bo-light .bo-sidebar .side-store .ss-mark { width: 22px; height: 22px; font-size: 9px; } /* 28px stood out beside the 20px icons */
+    body.bo-light .bo-sidebar .side-store .side-switch { gap: 11px; } /* the name starts where the menu words do */
+    /* every sidebar icon draws the same 1.56px line: the 24-grid ones (Suppliers, Back, Settings sections) need 1.875 to match the 16-grid 1.25 */
+    body.bo-light .bo-sidebar .side-link > svg:first-child:not(.sp) { stroke-width: 1.875; }
+    /* Settings' section icons were solid (filled parts, knocked-out holes); here they are lines like the rest */
+    body.bo-light .bo-sidebar .side-setnav .side-link svg .f { fill: none; }
+    body.bo-light .bo-sidebar .side-setnav .side-link svg :is(.k, .hole) { fill: none; stroke: currentColor; }
+    body.bo-light .bo-sidebar .side-gear { flex: none; width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 9999px; }
+    @media (min-width: 1024px) {
+      body.bo-light .bo-sidebar .side-loc .ss-mark { display: none; }
+      body.bo-light .bo-sidebar .side-loc .side-switch { padding-left: 6px; } /* the name starts on the icon column */
+      body.bo-light .bo-app.side-rail .bo-sidebar .side-loc { display: none; }
+      body.bo-light .bo-app.side-rail .bo-sidebar .side-rail-btn { opacity: 1; }
+    }
+    /* phone/tablet: the hamburger sits on the store's (hidden) mark, as it did on the glyph */
+    @media (max-width: 1023px) { body.bo-light .bo-sidebar .side-loc .ss-mark { visibility: hidden; } }
+  </style>
 </head>
 <body class="bo-body bo-light">
   <div id="app" class="bo-app">
@@ -38,9 +66,15 @@
     <!-- ============== SIDEBAR ============== -->
     <aside class="sidebar bo-sidebar">
       <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
-      <!-- Sidebar top: glyph, Back in Settings, the collapse button (Ctrl+B), then Search. -->
+      <!-- Sidebar top: the store switcher (owner 2026-11-16: was a glyph, the store sat at the foot), Back in Settings, the collapse button (Ctrl+B), then Search. -->
       <div class="side-switch-wrap side-top">
-        <span class="side-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
+        <div class="side-store side-loc"><div class="side-switch-wrap">
+          <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="ss-mark" id="locMark">MS</span>
+            <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+          </button>
+          <div class="side-menu" id="locMenu" role="menu" hidden></div>
+        </div></div>
         <button class="side-link" type="button" data-set-back hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
           <span>Back</span>
@@ -57,7 +91,7 @@
             <span>Home</span>
           </button>
           <button class="side-link" data-view="sales">
-            <svg class="sp f" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.952 1.5h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v9.096c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-9.096c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v9c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-9c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M3.452 7h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v3.596c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-3.596c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v3.5c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-3.5c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M12.5 4h-.048c-.182 0-.371 0-.543.034a1.75 1.75 0 0 0-1.375 1.375c-.035.172-.034.361-.034.543v6.596c0 .182 0 .371.034.543.138.695.68 1.237 1.375 1.375.172.035.361.034.543.034h.096c.182 0 .371 0 .543-.034a1.75 1.75 0 0 0 1.375-1.375c.035-.172.034-.361.034-.543v-6.596c0-.182 0-.371-.034-.543a1.75 1.75 0 0 0-1.375-1.375c-.172-.035-.361-.034-.543-.034zm-.495 1.7a.25.25 0 0 1 .194-.195l.053-.003c.054-.002.127-.002.248-.002s.193 0 .248.002l.053.003a.25.25 0 0 1 .194.194l.003.053c.002.055.002.127.002.248v6.5c0 .121 0 .193-.002.248l-.003.053a.25.25 0 0 1-.194.194l-.053.003c-.055.002-.127.002-.248.002s-.194 0-.248-.002l-.053-.003a.25.25 0 0 1-.194-.194l-.003-.053c-.002-.055-.002-.127-.002-.248v-6.5c0-.121 0-.193.002-.248l.003-.053zv-.002Z"></path></svg>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><!-- drawn as 1.25 lines like the other icons; the old one was a filled 1.5 outline and read heavier (owner 2026-11-16) --><rect x="1.75" y="7.75" width="2.5" height="6.5" rx="1.25"/><rect x="6.75" y="1.75" width="2.5" height="12.5" rx="1.25"/><rect x="11.75" y="4.75" width="2.5" height="9.5" rx="1.25"/></svg>
             <span>Sales</span>
           </button>
           <button class="side-link" data-view="transactions">
@@ -120,23 +154,11 @@
       <div class="side-footer">
         <!-- Lab: flips the Shopify-style table sheet off/on, so the shipped look shows on the same page and data. -->
         <button class="side-link" id="labShipped" type="button" aria-pressed="false" onclick="const s=document.getElementById('labTables'),on=!s.disabled;s.disabled=on;this.setAttribute('aria-pressed',on);this.lastElementChild.textContent=on?'Back to new look':'Preview shipped'">
-          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-1.5 0a1.5 1.5 0 1 1-3.001-.001 1.5 1.5 0 0 1 3.001.001"></path><path fill-rule="evenodd" d="M8 2c-2.476 0-4.348 1.23-5.577 2.532a9.3 9.3 0 0 0-1.4 1.922 6 6 0 0 0-.37.818c-.082.227-.153.488-.153.728s.071.501.152.728c.088.246.213.524.371.818.317.587.784 1.27 1.4 1.922 1.229 1.302 3.1 2.532 5.577 2.532s4.348-1.23 5.577-2.532a9.3 9.3 0 0 0 1.4-1.922c.158-.294.283-.572.37-.818.082-.227.153-.488.153-.728s-.071-.501-.152-.728a6 6 0 0 0-.371-.818 9.3 9.3 0 0 0-1.4-1.922c-1.229-1.302-3.1-2.532-5.577-2.532m-5.999 6.002v-.004c.004-.02.017-.09.064-.223.058-.161.15-.369.278-.608a7.8 7.8 0 0 1 1.17-1.605c1.042-1.104 2.545-2.062 4.487-2.062s3.445.958 4.486 2.062c.52.55.912 1.126 1.17 1.605.13.24.221.447.279.608.047.132.06.203.064.223v.004c-.004.02-.017.09-.064.223-.058.161-.15.369-.278.608a7.8 7.8 0 0 1-1.17 1.605c-1.042 1.104-2.545 2.062-4.487 2.062s-3.445-.958-4.486-2.062a7.7 7.7 0 0 1-1.17-1.605 4.5 4.5 0 0 1-.279-.608c-.047-.132-.06-.203-.064-.223"></path></svg>
+          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8"/><circle cx="8" cy="8" r="2"/></svg>
           <span>Preview shipped</span>
         </button>
-        <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
-        <button class="side-link" data-view="settings">
-          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg>
-          <span>Settings</span>
-        </button>
-        <!-- Sidebar foot row: store switcher left, account badge right (the bell's spot). -->
+        <!-- Sidebar foot row: account left with its name, Settings as a gear right (owner 2026-11-16). -->
         <div class="side-store">
-          <div class="side-switch-wrap">
-            <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
-              <span class="ss-mark" id="locMark">MS</span>
-              <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
-            </button>
-            <div class="side-menu up" id="locMenu" role="menu" hidden></div>
-          </div>
           <div class="side-switch-wrap">
             <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
               <span class="ss-mark" id="acctMark">EJ</span>
@@ -144,6 +166,7 @@
             </button>
             <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
           </div>
+          <button class="side-link side-gear" data-view="settings" aria-label="Settings" title="Settings"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg></button>
         </div>
       </div>
     </aside>
@@ -384,26 +407,26 @@
   <dialog id="adjustDlg" class="bo-dialog adj-dlg"></dialog>
   <div id="toast" class="toast" hidden></div>
 
-  <script src="/sales-math.js?v=20"></script>
+  <script src="sales-math.js?v=20"></script>
   <!-- Lab: one word for both voided rows (owner 2026-10-17); sales-math.js still says Void until this ships. -->
   <script>SalesMath.ROW_LABEL.void = 'Voided';</script>
-  <script src="/data-store.js?v=50"></script>
-  <script src="/data.js?v=27"></script>
-  <script src="/bo-model.js?v=124"></script>
+  <script src="data-store.js?v=50"></script>
+  <script src="data.js?v=27"></script>
+  <script src="bo-model.js?v=124"></script>
   <!-- Lab: the same six months of in-memory demo data scripts/serve.py injects into backoffice.html under /demo -->
-  <script src="/scripts/demo-fill.js"></script>
-  <script src="/router.js?v=62"></script>
-  <script src="/backoffice.js?v=231"></script>
-  <script src="/bo-products.js?v=118"></script>
-  <script src="/bo-catalog.js?v=9"></script>
-  <script src="/bo-item.js?v=21"></script>
-  <script src="/bo-insights.js?v=50"></script>
-  <script src="/bo-inventory.js?v=131"></script>
-  <script src="/bo-sales.js?v=143"></script>
-  <script src="/bo-transactions.js?v=23"></script>
-  <script src="/bo-suppliers.js?v=115"></script>
-  <script src="/bo-staff.js?v=116"></script>
-  <script src="/bo-shopify-copy.js?v=22"></script>
+  <script src="scripts/demo-fill.js"></script>
+  <script src="router.js?v=62"></script>
+  <script src="backoffice.js?v=231"></script>
+  <script src="bo-products.js?v=118"></script>
+  <script src="bo-catalog.js?v=9"></script>
+  <script src="bo-item.js?v=21"></script>
+  <script src="bo-insights.js?v=50"></script>
+  <script src="bo-inventory.js?v=131"></script>
+  <script src="bo-sales.js?v=143"></script>
+  <script src="bo-transactions.js?v=23"></script>
+  <script src="bo-suppliers.js?v=115"></script>
+  <script src="bo-staff.js?v=116"></script>
+  <script src="bo-shopify-copy.js?v=22"></script>
   <script>
     // ---- Back office: sidebar state (see "Sidebar state" in docs/backoffice.md) ----
     // 1024px+ : the sidebar is always there, full or the icon rail (.side-rail, a saved per-device pref).

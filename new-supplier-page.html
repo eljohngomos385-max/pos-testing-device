@@ -9,43 +9,79 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Geist:wght@400..700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=155" />
-  <link rel="stylesheet" href="/bo-products.css?v=124" />
-  <link rel="stylesheet" href="/bo-item.css?v=12" />
-  <link rel="stylesheet" href="/bo-inventory.css?v=106" />
-  <link rel="stylesheet" href="/bo-sales.css?v=98" />
-  <link rel="stylesheet" href="/bo-suppliers.css?v=97" />
-  <link rel="stylesheet" href="/bo-staff.css?v=98" />
-  <link rel="stylesheet" href="/bo-insights.css?v=4" />
-  <link rel="stylesheet" href="/bo-blocks.css?v=64" />
-  <link rel="stylesheet" href="/bo-calm.css?v=75" />
-  <link rel="stylesheet" href="/bo-sidebar.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=155" />
+  <link rel="stylesheet" href="bo-products.css?v=124" />
+  <link rel="stylesheet" href="bo-item.css?v=12" />
+  <link rel="stylesheet" href="bo-inventory.css?v=106" />
+  <link rel="stylesheet" href="bo-sales.css?v=98" />
+  <link rel="stylesheet" href="bo-suppliers.css?v=97" />
+  <link rel="stylesheet" href="bo-staff.css?v=98" />
+  <link rel="stylesheet" href="bo-insights.css?v=4" />
+  <link rel="stylesheet" href="bo-blocks.css?v=64" />
+  <link rel="stylesheet" href="bo-calm.css?v=75" />
+  <link rel="stylesheet" href="bo-sidebar.css?v=1" />
   <!-- Lab: Shopify-style list tables (Orders, Items, Customers). Only this copy loads it. -->
-  <link rel="stylesheet" id="labTables" href="/bo-shopify-tables.css?v=89" />
-  <!-- Lab: the New supplier page. Everything above is the copy's own CSS; these rules only lay the form out,
-       every colour, radius, line and shadow is the copy's token (--b-*, --sh-*, --po-*, --card-shadow). -->
+  <link rel="stylesheet" id="labTables" href="bo-shopify-tables.css?v=89" />
   <style>
-    /* New supplier: one plain column on the page. No cards, no borders: soft grey fields, labels above,
-       Save where the form ends (owner 2026-11-13: "box inside a box" was the problem; "a simple form"). */
-    body.bo-light .ns { display: grid; gap: 20px; width: 100%; max-width: 560px; margin-inline: auto; padding-bottom: 40px; }
-    body.bo-light .ns > .item-head { min-height: var(--po-head-h); margin-bottom: 4px; }
-    body.bo-light .ns-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 12px; }
-    body.bo-light .ns-f { display: grid; gap: 8px; min-width: 0; }
-    body.bo-light .ns-f > span:first-child { font-size: 13px; font-weight: 500; line-height: 18px; color: var(--sh-ink-2); }
-    body.bo-light .ns .ns-in {
-      width: 100%; height: 40px; padding: 0 14px; margin: 0;
-      border: 0; border-radius: var(--b-r-cell); background: var(--sh-fill);
-      color: var(--sh-ink); font: inherit; font-size: 14px; outline: none; box-shadow: none;
-      transition: background .12s, box-shadow .12s;
+    /* Copy only (owner 2026-11-16): the store's name alone sits at the top in the glyph's place (no mark), the
+       account is bottom-left with its name, Settings is a gear bottom-right. Folded, the top is only the sidebar button. */
+    body.bo-light .bo-sidebar .side-loc { flex: 1; min-width: 0; margin: 0 0 0 -5px; }
+    body.bo-light .bo-sidebar .side-loc .side-switch-wrap { min-width: 0; }
+    /* the store name from Settings › Store › Store name (#locBiz), not the location cut from the address (#locName) */
+    body.bo-light .bo-sidebar .side-loc .ss-text .ss-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 20px; font-weight: 400; color: var(--po-sidebar-ink); }
+    body.bo-light .bo-sidebar .side-loc .ss-text .ss-name { display: none; }
+    body.bo-light .bo-sidebar .side-loc .side-switch { width: auto; max-width: 100%; }
+    body.bo-light .bo-sidebar .side-store .acct { width: auto; padding: 0 10px 0 7px; }
+    body.bo-light .bo-sidebar .side-store .acct .ss-text { display: flex; }
+    body.bo-light .bo-sidebar .side-store .ss-mark { width: 22px; height: 22px; font-size: 9px; } /* 28px stood out beside the 20px icons */
+    body.bo-light .bo-sidebar .side-store .side-switch { gap: 11px; } /* the name starts where the menu words do */
+    /* every sidebar icon draws the same 1.56px line: the 24-grid ones (Suppliers, Back, Settings sections) need 1.875 to match the 16-grid 1.25 */
+    body.bo-light .bo-sidebar .side-link > svg:first-child:not(.sp) { stroke-width: 1.875; }
+    /* Settings' section icons were solid (filled parts, knocked-out holes); here they are lines like the rest */
+    body.bo-light .bo-sidebar .side-setnav .side-link svg .f { fill: none; }
+    body.bo-light .bo-sidebar .side-setnav .side-link svg :is(.k, .hole) { fill: none; stroke: currentColor; }
+    body.bo-light .bo-sidebar .side-gear { flex: none; width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 9999px; }
+    @media (min-width: 1024px) {
+      body.bo-light .bo-sidebar .side-loc .ss-mark { display: none; }
+      body.bo-light .bo-sidebar .side-loc .side-switch { padding-left: 6px; } /* the name starts on the icon column */
+      body.bo-light .bo-app.side-rail .bo-sidebar .side-loc { display: none; }
+      body.bo-light .bo-app.side-rail .bo-sidebar .side-rail-btn { opacity: 1; }
     }
-    body.bo-light .ns .ns-in:focus { background: var(--b-raised); box-shadow: 0 0 0 1px var(--sh-ink); }   /* ink, not blue: blue is links only */
-    body.bo-light .ns textarea.ns-in { height: auto; min-height: 104px; padding: 10px 14px; line-height: 1.5; resize: vertical; }
-    body.bo-light .ns .ns-f.bad .ns-in { box-shadow: 0 0 0 1px var(--b-down); }
-    body.bo-light .ns-err { font-size: 13px; color: var(--b-down); }
-    body.bo-light .ns-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
-    body.bo-light .ns .ns-foot > * { display: inline-flex; align-items: center; height: 40px; padding: 0 18px; border-radius: var(--b-r-cell); font-size: 14px; }
-    body.bo-light .ns .ns-foot > .secondary-btn { background: var(--sh-fill); border: 0; box-shadow: none; color: var(--sh-ink); }
-    @media (max-width: 480px) { body.bo-light .ns-two { grid-template-columns: minmax(0, 1fr); } }
+    /* phone/tablet: the hamburger sits on the store's (hidden) mark, as it did on the glyph */
+    @media (max-width: 1023px) { body.bo-light .bo-sidebar .side-loc .ss-mark { visibility: hidden; } }
+  </style>
+  <!-- Lab: New supplier as a full page (owner 2026-11-16). Look measured from the owner's reference (a settings page:
+       centred column, title, white cards of rows, label left and control right) and drawn with the copy's tokens. -->
+  <style>
+    body.bo-light .np { width: 100%; max-width: 640px; margin-inline: auto; padding-bottom: 48px; }
+    body.bo-light .np-bar { display: flex; align-items: center; justify-content: space-between; min-height: var(--po-head-h); margin-bottom: 20px; }
+    body.bo-light .np-x { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9999px; background: var(--sh-fill); color: var(--sh-ink); }
+    body.bo-light .np-x:hover { background: var(--sh-line); }
+    body.bo-light .np-x svg { width: 16px; height: 16px; }
+    body.bo-light .np-save { height: 32px; padding: 0 16px; border: 0; border-radius: 9999px; background: var(--sh-ink); color: #fff; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+    body.bo-light .np h1 { margin: 0 0 24px; font-size: 22px; font-weight: 600; line-height: 28px; letter-spacing: -0.01em; color: var(--sh-ink); }
+    body.bo-light .np h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; line-height: 20px; color: var(--sh-ink); }
+    body.bo-light .np-card { margin-bottom: 28px; border: 1px solid var(--b-line); border-radius: var(--b-r-cell); background: var(--b-raised); box-shadow: var(--sh-card-soft); overflow: hidden; }
+    body.bo-light .np-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 52px; padding: 9px 16px; }
+    body.bo-light .np-row + .np-row { border-top: 1px solid var(--sh-line); }
+    body.bo-light .np-l { display: grid; gap: 2px; min-width: 0; }
+    body.bo-light .np-l b { font-size: 14px; font-weight: 500; line-height: 20px; color: var(--sh-ink); }
+    body.bo-light .np-l small { font-size: 13px; line-height: 18px; color: var(--sh-ink-2); }
+    body.bo-light .np .np-in {
+      flex: none; width: 280px; height: 34px; margin: 0; padding: 0 12px;
+      border: 1px solid var(--b-line); border-radius: var(--b-r-row); background: var(--b-raised); box-shadow: none; outline: none;
+      color: var(--sh-ink); font: inherit; font-size: 14px;
+    }
+    body.bo-light .np .np-in::placeholder { color: var(--sh-ink-3); }
+    body.bo-light .np .np-in:focus { border-color: var(--sh-ink); }   /* ink, not blue: blue is links only */
+    body.bo-light .np textarea.np-in { display: block; width: 100%; height: auto; min-height: 112px; padding: 12px 16px; border: 0; border-radius: 0; line-height: 1.5; resize: none; }
+    body.bo-light .np-row.bad .np-in { border-color: var(--b-down); }
+    body.bo-light .np-row.bad small { color: var(--b-down); }
+    @media (max-width: 1023px) { body.bo-light .np-bar { padding-left: 46px; margin-top: -5px; } }   /* clear the hamburger, as .item-head does */
+    @media (max-width: 600px) {
+      body.bo-light .np-row { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px 16px; }
+      body.bo-light .np .np-in { width: 100%; }
+    }
   </style>
 </head>
 <body class="bo-body bo-light">
@@ -63,9 +99,15 @@
     <!-- ============== SIDEBAR ============== -->
     <aside class="sidebar bo-sidebar">
       <div class="side-resizer" id="sideResizer" title="Drag to resize · double-click to reset"></div>
-      <!-- Sidebar top: glyph, Back in Settings, the collapse button (Ctrl+B), then Search. -->
+      <!-- Sidebar top: the store switcher (owner 2026-11-16: was a glyph, the store sat at the foot), Back in Settings, the collapse button (Ctrl+B), then Search. -->
       <div class="side-switch-wrap side-top">
-        <span class="side-glyph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v5"/><path d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"/><path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05"/></svg></span>
+        <div class="side-store side-loc"><div class="side-switch-wrap">
+          <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+            <span class="ss-mark" id="locMark">MS</span>
+            <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
+          </button>
+          <div class="side-menu" id="locMenu" role="menu" hidden></div>
+        </div></div>
         <button class="side-link" type="button" data-set-back hidden>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
           <span>Back</span>
@@ -82,7 +124,7 @@
             <span>Home</span>
           </button>
           <button class="side-link" data-view="sales">
-            <svg class="sp f" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M7.952 1.5h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v9.096c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-9.096c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v9c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-9c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M3.452 7h.096c.182 0 .371 0 .543.034.695.138 1.237.68 1.375 1.375.035.172.034.361.034.543v3.596c0 .182 0 .371-.034.543a1.75 1.75 0 0 1-1.375 1.375c-.172.035-.361.034-.543.034h-.096c-.182 0-.371 0-.543-.034a1.75 1.75 0 0 1-1.375-1.375c-.035-.172-.034-.361-.034-.543v-3.596c0-.182 0-.371.034-.543a1.75 1.75 0 0 1 1.375-1.375c.172-.035.361-.034.543-.034m-.253 1.505a.25.25 0 0 0-.194.194l-.003.053c-.002.055-.002.127-.002.248v3.5c0 .121 0 .193.002.248l.003.053a.25.25 0 0 0 .194.194l.053.003c.055.002.127.002.248.002s.193 0 .248-.002l.053-.003a.25.25 0 0 0 .194-.194l.003-.053c.002-.055.002-.127.002-.248v-3.5c0-.121 0-.193-.002-.248l-.003-.053a.25.25 0 0 0-.194-.194l-.053-.003c-.055-.002-.127-.002-.248-.002s-.193 0-.248.002z"></path><path fill-rule="evenodd" d="M12.5 4h-.048c-.182 0-.371 0-.543.034a1.75 1.75 0 0 0-1.375 1.375c-.035.172-.034.361-.034.543v6.596c0 .182 0 .371.034.543.138.695.68 1.237 1.375 1.375.172.035.361.034.543.034h.096c.182 0 .371 0 .543-.034a1.75 1.75 0 0 0 1.375-1.375c.035-.172.034-.361.034-.543v-6.596c0-.182 0-.371-.034-.543a1.75 1.75 0 0 0-1.375-1.375c-.172-.035-.361-.034-.543-.034zm-.495 1.7a.25.25 0 0 1 .194-.195l.053-.003c.054-.002.127-.002.248-.002s.193 0 .248.002l.053.003a.25.25 0 0 1 .194.194l.003.053c.002.055.002.127.002.248v6.5c0 .121 0 .193-.002.248l-.003.053a.25.25 0 0 1-.194.194l-.053.003c-.055.002-.127.002-.248.002s-.194 0-.248-.002l-.053-.003a.25.25 0 0 1-.194-.194l-.003-.053c-.002-.055-.002-.127-.002-.248v-6.5c0-.121 0-.193.002-.248l.003-.053zv-.002Z"></path></svg>
+            <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><!-- drawn as 1.25 lines like the other icons; the old one was a filled 1.5 outline and read heavier (owner 2026-11-16) --><rect x="1.75" y="7.75" width="2.5" height="6.5" rx="1.25"/><rect x="6.75" y="1.75" width="2.5" height="12.5" rx="1.25"/><rect x="11.75" y="4.75" width="2.5" height="9.5" rx="1.25"/></svg>
             <span>Sales</span>
           </button>
           <button class="side-link" data-view="transactions">
@@ -101,10 +143,10 @@
         </div></div>
         <button class="side-label" type="button" data-fold="stock" aria-expanded="true">Stock<svg class="side-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
         <div class="side-fold"><div class="side-fold-in">
-          <button class="side-link has-sub active" data-view="suppliers" data-sub="suppliers orders incoming">
+          <button class="side-link active" data-view="suppliers" data-sub="suppliers orders incoming">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>
-            <span>Suppliers</span><svg class="side-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-          </button><div class="side-sub" data-view="suppliers"><div class="side-fold-in"><button class="side-sublink" type="button" data-sub="orders">Purchase orders</button><button class="side-sublink" type="button" data-sub="incoming">Incoming</button></div></div>
+            <span>Suppliers</span>
+          </button>
         </div></div>
       </nav>
 
@@ -145,23 +187,11 @@
       <div class="side-footer">
         <!-- Lab: flips the Shopify-style table sheet off/on, so the shipped look shows on the same page and data. -->
         <button class="side-link" id="labShipped" type="button" aria-pressed="false" onclick="const s=document.getElementById('labTables'),on=!s.disabled;s.disabled=on;this.setAttribute('aria-pressed',on);this.lastElementChild.textContent=on?'Back to new look':'Preview shipped'">
-          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11 8a3 3 0 1 1-6 0 3 3 0 0 1 6 0m-1.5 0a1.5 1.5 0 1 1-3.001-.001 1.5 1.5 0 0 1 3.001.001"></path><path fill-rule="evenodd" d="M8 2c-2.476 0-4.348 1.23-5.577 2.532a9.3 9.3 0 0 0-1.4 1.922 6 6 0 0 0-.37.818c-.082.227-.153.488-.153.728s.071.501.152.728c.088.246.213.524.371.818.317.587.784 1.27 1.4 1.922 1.229 1.302 3.1 2.532 5.577 2.532s4.348-1.23 5.577-2.532a9.3 9.3 0 0 0 1.4-1.922c.158-.294.283-.572.37-.818.082-.227.153-.488.153-.728s-.071-.501-.152-.728a6 6 0 0 0-.371-.818 9.3 9.3 0 0 0-1.4-1.922c-1.229-1.302-3.1-2.532-5.577-2.532m-5.999 6.002v-.004c.004-.02.017-.09.064-.223.058-.161.15-.369.278-.608a7.8 7.8 0 0 1 1.17-1.605c1.042-1.104 2.545-2.062 4.487-2.062s3.445.958 4.486 2.062c.52.55.912 1.126 1.17 1.605.13.24.221.447.279.608.047.132.06.203.064.223v.004c-.004.02-.017.09-.064.223-.058.161-.15.369-.278.608a7.8 7.8 0 0 1-1.17 1.605c-1.042 1.104-2.545 2.062-4.487 2.062s-3.445-.958-4.486-2.062a7.7 7.7 0 0 1-1.17-1.605 4.5 4.5 0 0 1-.279-.608c-.047-.132-.06-.203-.064-.223"></path></svg>
+          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M1.75 8S4 3.75 8 3.75 14.25 8 14.25 8 12 12.25 8 12.25 1.75 8 1.75 8"/><circle cx="8" cy="8" r="2"/></svg>
           <span>Preview shipped</span>
         </button>
-        <!-- Settings sits at the bottom, over the account; opening it swaps the nav above for .side-setnav and hides this row (paint()). -->
-        <button class="side-link" data-view="settings">
-          <svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg>
-          <span>Settings</span>
-        </button>
-        <!-- Sidebar foot row: store switcher left, account badge right (the bell's spot). -->
+        <!-- Sidebar foot row: account left with its name, Settings as a gear right (owner 2026-11-16). -->
         <div class="side-store">
-          <div class="side-switch-wrap">
-            <button class="side-switch" id="locBtn" type="button" aria-haspopup="menu" aria-expanded="false">
-              <span class="ss-mark" id="locMark">MS</span>
-              <span class="ss-text"><span class="ss-label" id="locBiz">EJ Hardware</span><span class="ss-name" id="locName">Main Store</span></span>
-            </button>
-            <div class="side-menu up" id="locMenu" role="menu" hidden></div>
-          </div>
           <div class="side-switch-wrap">
             <button class="side-switch acct" id="acctBtn" type="button" aria-haspopup="menu" aria-expanded="false">
               <span class="ss-mark" id="acctMark">EJ</span>
@@ -169,6 +199,7 @@
             </button>
             <div class="side-menu up" id="acctMenu" role="menu" hidden></div>
           </div>
+          <button class="side-link side-gear" data-view="settings" aria-label="Settings" title="Settings"><svg class="sp" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 10.25c1.25 0 2.25-1 2.25-2.25s-1-2.25-2.25-2.25-2.25 1-2.25 2.25 1 2.25 2.25 2.25"></path><path d="m13.32 6.5-.82-.29c-.06-.21-.17-.46-.29-.67a4.4 4.4 0 0 0-.42-.61l.21-.84c.06-.59-.21-1.18-.72-1.47l-.28-.18c-.54-.3-1.18-.24-1.62.15l-.63.55q-.75-.105-1.5 0l-.63-.55a1.4 1.4 0 0 0-1.62-.15l-.28.18c-.51.29-.78.88-.72 1.47l.21.84c-.32.39-.56.82-.74 1.28l-.8.29c-.55.2-.92.75-.92 1.32v.36c0 .57.37 1.12.92 1.32l.8.29c.09.21.19.46.32.67.12.21.27.42.42.61l-.21.84c-.06.59.21 1.18.72 1.47l.28.18c.53.3 1.17.24 1.62-.15l.63-.55q.75.105 1.5 0l.62.55c.45.39 1.09.45 1.63.15l.28-.18c.51-.29.72-.88.72-1.47l-.21-.84c.31-.39.56-.82.74-1.28l.79-.29c.56-.2.93-.75.93-1.32v-.36c0-.57-.37-1.12-.93-1.32"></path></svg></button>
         </div>
       </div>
     </aside>
@@ -176,24 +207,23 @@
     <!-- ============== MAIN ============== -->
     <div class="main bo-main">
       <section class="view view-suppliers active" data-view="suppliers">
-        <!-- New supplier: SUP_FIELDS (bo-suppliers.js), nothing else, in one column. Lab: Save checks the name and says so, it stores nothing. -->
-        <form class="ns" id="nsForm" novalidate autocomplete="off">
-          <header class="item-head">
-            <a class="item-back" href="backoffice-shopify.html#/suppliers">Suppliers</a>
-            <h1>New supplier</h1>
-          </header>
-          <label class="ns-f"><span>Name</span><input class="ns-in" name="name" type="text" autofocus></label>
-          <label class="ns-f"><span>Contact person</span><input class="ns-in" name="contact" type="text"></label>
-          <div class="ns-two">
-            <label class="ns-f"><span>Phone</span><input class="ns-in" name="phone" type="tel"></label>
-            <label class="ns-f"><span>Email</span><input class="ns-in" name="email" type="email"></label>
+        <!-- New supplier: the fields are SUP_FIELDS (bo-suppliers.js), nothing added. Lab: Save checks the name and says so; it stores nothing. -->
+        <form class="np" id="nsForm" novalidate autocomplete="off">
+          <div class="np-bar">
+            <a class="np-x" href="backoffice-shopify.html#/suppliers" aria-label="Close"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="m4 4 8 8M12 4l-8 8"/></svg></a>
+            <button class="np-save" type="submit">Save</button>
           </div>
-          <label class="ns-f"><span>Address</span><input class="ns-in" name="address" type="text"></label>
-          <label class="ns-f"><span>Note</span><textarea class="ns-in" name="note" rows="4"></textarea></label>
-          <div class="ns-foot">
-            <a class="secondary-btn" href="backoffice-shopify.html#/suppliers">Cancel</a>
-            <button class="primary-btn" type="submit">Save</button>
+          <h1>New supplier</h1>
+          <h2>Details</h2>
+          <div class="np-card">
+            <label class="np-row" id="nsName"><span class="np-l"><b>Name</b><small>Required</small></span><input class="np-in" name="name" type="text" autofocus></label>
+            <label class="np-row"><span class="np-l"><b>Contact person</b></span><input class="np-in" name="contact" type="text"></label>
+            <label class="np-row"><span class="np-l"><b>Phone</b></span><input class="np-in" name="phone" type="tel"></label>
+            <label class="np-row"><span class="np-l"><b>Email</b></span><input class="np-in" name="email" type="email"></label>
+            <label class="np-row"><span class="np-l"><b>Address</b></span><input class="np-in" name="address" type="text"></label>
           </div>
+          <h2>Note</h2>
+          <div class="np-card"><textarea class="np-in" name="note" rows="4" aria-label="Note" placeholder="Anything to remember about this supplier"></textarea></div>
         </form>
       </section>
     </div>
@@ -212,19 +242,13 @@
       });
       document.addEventListener('click', function (e) {
         var link = e.target.closest('.bo-sidebar .side-link[data-view], .bo-sidebar .side-sublink');
-        if (link) { location.href = 'backoffice-shopify.html#/' + (link.dataset.view || 'suppliers'); return; }   // ponytail: sub-links land on Suppliers
+        if (link) { location.href = 'backoffice-shopify.html#/' + (link.dataset.view || 'suppliers'); return; }   // shortcut: sub-links land on Suppliers, fine for a lab
         if (app.classList.contains('side-open') && !e.target.closest('.bo-sidebar, #boSidebarToggle')) app.classList.remove('side-open');
       });
 
-      // Save: a name is the one thing it needs; said under the field, never a browser pop-up.
-      var form = document.getElementById('nsForm');
-      var name = form.elements.name, field = name.closest('.ns-f');
-      function setBad(on) {
-        field.classList.toggle('bad', on);
-        var msg = field.querySelector('.ns-err');
-        if (on && !msg) field.insertAdjacentHTML('beforeend', '<span class="ns-err">Add a name</span>');
-        if (!on && msg) msg.remove();
-      }
+      // Save: a name is the one thing it needs; said in the row, never a browser pop-up.
+      var form = document.getElementById('nsForm'), name = form.elements.name, row = document.getElementById('nsName'), hint = row.querySelector('small');
+      function setBad(on) { row.classList.toggle('bad', on); hint.textContent = on ? 'Add a name' : 'Required'; }
       name.addEventListener('input', function () { if (name.value.trim()) setBad(false); });
       form.addEventListener('submit', function (e) {
         e.preventDefault();

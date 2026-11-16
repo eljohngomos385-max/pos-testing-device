@@ -1,5 +1,7 @@
-// Bakes the empty pages' pictures (emptyState in pos-lab/pos-core.js) from the owner's Grain lab, empty-lab/a4-grain.html
-// (owner 2026-11-16): each picture is drawn there live (SVG mottle, colour table, rim, film grain) and shot here at 140 CSS px,
+// Bakes the empty pages' pictures (emptyState in pos-lab/pos-core.js) from the owner's Grain lab, empty-lab/a5-grain-bulge.html
+// with its lift C at 35% (owner 2026-11-16): a light lip inside the top edges, a navy shade inside the bottom edges and a
+// small deep-blue shadow, so the pictures sit up off the page. Each picture is drawn there live (SVG mottle, colour table, rim,
+// film grain, lift) and shot here at 140 CSS px,
 // 3x, light and dark, into pos-lab/img/empty/<pic>.webp and <pic>-dark.webp (WebP q92: ~25 KB each, PNG was ~130 KB;
 // the grain survives, std 6.2 vs 6.4). The POS only shows the pictures, so no SVG
 // filter runs on it: live filters made iPhone swipes lag (owner 2026-11-06). The pattern of each picture is the lab's,
@@ -15,17 +17,19 @@ const require = createRequire(import.meta.url);
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const pw = require(ROOT + 'node_modules/playwright-core');
 const OUT = ROOT + 'pos-lab/img/empty/', SIZE = 140, DPR = 3;
-// POS picture -> its card in a4-grain.html (0-based, in page order)
+// POS picture -> its card in the lab (0-based, in page order; a5 draws all 21 of a4's cards so each keeps its pattern)
+const LIFT = { v: 'c', s: '.35' };
 const PICS = { search: 0, tag: 1, folder: 2, box: 3, receipt: 6, grid: 11, toggle: 12, plus: 13, percent: 14, person: 15, cash: 17, clock: 18 };
 fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await pw.chromium.launch({ channel: 'msedge' });
 const page = await browser.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: DPR });
 for (const theme of ['light', 'dark']) {
-  await page.goto('file://' + ROOT + 'empty-lab/a4-grain.html');
+  await page.goto('file://' + ROOT + 'empty-lab/a5-grain-bulge.html');
   if (theme === 'dark') await page.click('#tDark');
+  await page.click(`#vPick [data-v=${LIFT.v}]`); await page.click(`#sPick [data-s="${LIFT.s}"]`);
   await page.addStyleTag({ content: `html, body, main, .card { background: none !important; } .card { width: auto !important; height: auto !important; border: 0 !important; }
-    .card svg { width: ${SIZE}px !important; height: ${SIZE}px !important; margin: 0 !important; }` });
+    .card svg { width: ${SIZE}px !important; height: ${SIZE}px !important; margin: 0 !important; } figure.off { display: block !important; }` });
   await page.waitForTimeout(600);   // the grain tile (feImage) loads and refits to the new size
   const svgs = await page.$$('.card svg');
   for (const [pic, i] of Object.entries(PICS))

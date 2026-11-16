@@ -277,10 +277,12 @@ The words are the owner's pick **C1** (2026-11-06): one 17px line under the pict
 - **Why baked.** The lab draws the look with live SVG filters: the colour table, the rim and the grain. iPhone Safari draws those on the CPU, and draws them again for every swipe peek, which made swipes lag (2026-11-06).
 - **Why prefetched.** `EMPTY_PICS` in pos-core.js fetches every picture once at start and keeps it as a `blob:` URL. Without this, the first visit to a page showed it without its picture for a moment, because `scripts/serve.py` sends `no-store`. In the Capacitor build the files ship inside the app.
 - **The grain is real film grain:** per-pixel specks that lighten and darken equally. The lab draws it 1 speck = 1 screen pixel at any size, which is why it is baked at 3x. Grain that is part of the drawing grows with the icon and reads as "paper mache" (owner, 2026-11-16).
+- **The lift (C at 35%, owner 2026-11-16).** Each picture sits slightly up off the page: a light lip inside its top edges, a navy shade inside its bottom edges and a small deep-blue shadow, all drawn from the outline with its holes. The owner called the full-strength version "overdone, floats too much", so it is 35% of that. The lift lives in [a5-grain-bulge.html](../empty-lab/a5-grain-bulge.html) (tries A–E, strength 10–100%), and the bake shoots that page with `LIFT = { v: 'c', s: '.35' }`.
+- **After a new bake, bump `EMPTY_V` in pos-core.js.** The picture links carry it (`?v=`), so no device keeps an old copy.
 - **Shapes.** Each picture is one silhouette. Parts are joined by a small rounded corner, never a big flare: the owner called big ones "too welded". Details such as the tag hole are cut through the shape, never a second layer on top.
 - **A speed fix never changes the look.** Prove a speed fix with a pixel diff against the old screenshots. A sharpened shape was rejected as "you removed the core design".
 - **Adding or changing a picture:**
-  - Draw it in [a4-grain.html](../empty-lab/a4-grain.html). Its shapes are shared with a4-orb.html; `a4-mag.py` and `a4-person.py` rebuild the magnifier and person paths.
+  - Draw it in [a4-grain.html](../empty-lab/a4-grain.html), and copy the change into a5-grain-bulge.html, which the bake reads (the same page plus the lift). Its shapes are shared with a4-orb.html; `a4-mag.py` and `a4-person.py` rebuild the magnifier and person paths.
   - Map the picture to its card in `PICS` in [scripts/bake-empty-pics.mjs](../scripts/bake-empty-pics.mjs).
   - Run `node scripts/bake-empty-pics.mjs`. It needs Edge, playwright-core and python3 with Pillow.
   - Add its name to the prefetch list in pos-core.js.
@@ -293,6 +295,7 @@ The words are the owner's pick **C1** (2026-11-06): one 17px line under the pict
 | **Grain (in the app, 2026-11-16)** | [a4-grain](../empty-lab/a4-grain.html), [a3-grain](../empty-lab/a3-grain.html), [a3-grain-copy](../empty-lab/a3-grain-copy.html) |
 | Orb (liked, same shapes) | [a4-orb](../empty-lab/a4-orb.html), [a3-orb](../empty-lab/a3-orb.html), [a3-orb-copy](../empty-lab/a3-orb-copy.html) |
 | Both, icons only | [a4-icons](../empty-lab/a4-icons.html) |
+| **Grain lift (in the app: C 35%)** | [a5-grain-bulge](../empty-lab/a5-grain-bulge.html) |
 | **B: silhouette (before)** | [b3-silhouette](../empty-lab/b3-silhouette.html) (C1), [b2-silhouette](../empty-lab/b2-silhouette.html), [b-silhouette](../empty-lab/b-silhouette.html), [b2-copy](../empty-lab/b2-copy.html) |
 | All drawings | [silhouettes](../empty-lab/silhouettes.html) |
 | A: glass | [a2-glass](../empty-lab/a2-glass.html), [a-glass](../empty-lab/a-glass.html), [a2-copy](../empty-lab/a2-copy.html) |
